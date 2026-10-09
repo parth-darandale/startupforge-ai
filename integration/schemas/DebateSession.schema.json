@@ -1,0 +1,207 @@
+{
+  "$defs": {
+    "DebateTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "turn_id": {
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "round_number": {
+          "minimum": 0,
+          "title": "Round Number",
+          "type": "integer"
+        },
+        "speaker": {
+          "enum": [
+            "user",
+            "pro",
+            "skeptic",
+            "moderator"
+          ],
+          "title": "Speaker",
+          "type": "string"
+        },
+        "stance": {
+          "enum": [
+            "for",
+            "against",
+            "neutral"
+          ],
+          "title": "Stance",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "figures": {
+          "items": {
+            "$ref": "#/$defs/SourcedFigure"
+          },
+          "title": "Figures",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "turn_id",
+        "round_number",
+        "speaker",
+        "stance",
+        "message"
+      ],
+      "title": "DebateTurn",
+      "type": "object"
+    },
+    "SourcedFigure": {
+      "additionalProperties": false,
+      "properties": {
+        "figure_id": {
+          "title": "Figure Id",
+          "type": "string"
+        },
+        "display_value": {
+          "title": "Display Value",
+          "type": "string"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "excerpt": {
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "qualification": {
+          "title": "Qualification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "figure_id",
+        "display_value",
+        "metric",
+        "excerpt",
+        "evidence_id",
+        "source_id",
+        "qualification"
+      ],
+      "title": "SourcedFigure",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "debate_id": {
+      "title": "Debate Id",
+      "type": "string"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    },
+    "analysis_id": {
+      "title": "Analysis Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "user_vs_agent",
+        "agent_vs_agent"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "user_stance": {
+      "enum": [
+        "for",
+        "against"
+      ],
+      "title": "User Stance",
+      "type": "string"
+    },
+    "max_rounds": {
+      "maximum": 5,
+      "minimum": 1,
+      "title": "Max Rounds",
+      "type": "integer"
+    },
+    "status": {
+      "default": "active",
+      "enum": [
+        "active",
+        "completed",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "turns": {
+      "items": {
+        "$ref": "#/$defs/DebateTurn"
+      },
+      "title": "Turns",
+      "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "debate_id",
+    "project_id",
+    "analysis_id",
+    "mode",
+    "user_stance",
+    "max_rounds"
+  ],
+  "title": "DebateSession",
+  "type": "object"
+}

@@ -1,0 +1,1 @@
+"""StartupForge standalone development application."""

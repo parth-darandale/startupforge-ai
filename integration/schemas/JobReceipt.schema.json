@@ -1,0 +1,29 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "job_id": {
+      "title": "Job Id",
+      "type": "string"
+    },
+    "status_url": {
+      "title": "Status Url",
+      "type": "string"
+    },
+    "operation": {
+      "title": "Operation",
+      "type": "string"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "job_id",
+    "status_url",
+    "operation",
+    "project_id"
+  ],
+  "title": "JobReceipt",
+  "type": "object"
+}

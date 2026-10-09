@@ -1,0 +1,80 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "original_text": {
+      "maxLength": 12000,
+      "minLength": 10,
+      "title": "Original Text",
+      "type": "string"
+    },
+    "project_name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Project Name",
+      "type": "string"
+    },
+    "problem": {
+      "maxLength": 3000,
+      "minLength": 1,
+      "title": "Problem",
+      "type": "string"
+    },
+    "solution": {
+      "maxLength": 3000,
+      "minLength": 1,
+      "title": "Solution",
+      "type": "string"
+    },
+    "target_users": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Target Users",
+      "type": "array"
+    },
+    "domain": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Domain",
+      "type": "string"
+    },
+    "assumptions": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 30,
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "constraints": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 30,
+      "title": "Constraints",
+      "type": "array"
+    },
+    "field_origins": {
+      "additionalProperties": {
+        "enum": [
+          "provided",
+          "inferred",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "title": "Field Origins",
+      "type": "object"
+    }
+  },
+  "required": [
+    "original_text",
+    "project_name",
+    "problem",
+    "solution",
+    "domain"
+  ],
+  "title": "IdeaSpec",
+  "type": "object"
+}

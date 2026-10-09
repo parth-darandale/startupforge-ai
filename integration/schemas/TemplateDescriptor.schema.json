@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "template_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Template Id",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "pitch_deck",
+        "poster",
+        "report"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "supported_formats": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Supported Formats",
+      "type": "array"
+    },
+    "supported_options": {
+      "additionalProperties": true,
+      "title": "Supported Options",
+      "type": "object"
+    }
+  },
+  "required": [
+    "template_id",
+    "name",
+    "kind",
+    "supported_formats"
+  ],
+  "title": "TemplateDescriptor",
+  "type": "object"
+}

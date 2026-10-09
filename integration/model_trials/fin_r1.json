@@ -1,0 +1,1524 @@
+{
+  "report_version": "1.0",
+  "created_at": "2026-10-08T15:21:34.280877+00:00",
+  "status": "completed",
+  "provider": "ollama",
+  "synthetic_fixture": true,
+  "protocol": "Fixed independent inputs, sequential models/tasks, temperature 0 and seed 42; no application guards or repair.",
+  "limitations": [
+    "These synthetic cases do not measure factual business accuracy, real market knowledge or commercial viability.",
+    "Citation checks validate IDs and figure lineage, not whether prose is semantically supported.",
+    "Numeric checks are heuristic; derived quantities and qualified hypotheses require human review.",
+    "Keyword overlap is a weak responsiveness indicator; manually read each raw response.",
+    "A single deterministic run does not establish repeatability. Latency includes loading where reported."
+  ],
+  "config": {
+    "context_size": 4096,
+    "num_predict": 1024,
+    "task_timeout_seconds": 180.0,
+    "quick_smoke": false,
+    "prompt_snapshot": "..\\integration\\model_trials\\prompt_protocol_v1.json",
+    "prompt_snapshot_sha256": "107b1d04f23f8788c72b9ba6be77e271fe0c5009b1be6aff71fbc8aa5f0ecb8e"
+  },
+  "cases": [
+    {
+      "case_id": "extraction",
+      "task": "extract",
+      "payload": {
+        "idea_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission."
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "original_text": {
+            "maxLength": 12000,
+            "minLength": 10,
+            "title": "Original Text",
+            "type": "string"
+          },
+          "project_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project Name",
+            "type": "string"
+          },
+          "problem": {
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Problem",
+            "type": "string"
+          },
+          "solution": {
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Solution",
+            "type": "string"
+          },
+          "target_users": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Target Users",
+            "type": "array"
+          },
+          "domain": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Domain",
+            "type": "string"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Constraints",
+            "type": "array"
+          },
+          "field_origins": {
+            "additionalProperties": {
+              "enum": [
+                "provided",
+                "inferred",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "title": "Field Origins",
+            "type": "object"
+          }
+        },
+        "required": [
+          "original_text",
+          "project_name",
+          "problem",
+          "solution",
+          "domain"
+        ],
+        "title": "IdeaSpec",
+        "type": "object"
+      }
+    },
+    {
+      "case_id": "sourced_analysis",
+      "task": "analyze",
+      "payload": {
+        "idea": {
+          "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+          "project_name": "CampusLoop",
+          "problem": "Students need a convenient way to exchange used textbooks.",
+          "solution": "A campus marketplace for used textbooks.",
+          "target_users": [
+            "College students"
+          ],
+          "domain": "Student marketplace",
+          "assumptions": [
+            "Students will prefer a dedicated marketplace."
+          ],
+          "constraints": [
+            "Pilot at one college",
+            "Validate demand before charging commission"
+          ],
+          "field_origins": {
+            "project_name": "provided",
+            "problem": "inferred",
+            "solution": "provided",
+            "target_users": "provided",
+            "domain": "inferred"
+          }
+        },
+        "evidence": [
+          {
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data."
+          },
+          {
+            "evidence_id": "ev_alternatives",
+            "source_id": "src_alternatives",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: The fictional college already has a free message board for used-book listings. Its transaction volume and reliability have not been measured."
+          }
+        ],
+        "sources": [
+          {
+            "source_id": "src_interviews",
+            "title": "Fictional pilot interviews",
+            "kind": "fixture",
+            "url": "https://example.org/benchmark/interviews"
+          },
+          {
+            "source_id": "src_alternatives",
+            "title": "Fictional campus alternatives",
+            "kind": "fixture",
+            "url": "https://example.org/benchmark/alternatives"
+          }
+        ],
+        "research_options": {
+          "max_sources": 2
+        },
+        "queries": [],
+        "gaps": [
+          "All supplied evidence is synthetic; no real market validation."
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "AnalysisSection": {
+            "additionalProperties": false,
+            "properties": {
+              "section_id": {
+                "title": "Section Id",
+                "type": "string"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "claims": {
+                "items": {
+                  "$ref": "#/$defs/Claim"
+                },
+                "title": "Claims",
+                "type": "array"
+              }
+            },
+            "required": [
+              "section_id",
+              "heading"
+            ],
+            "title": "AnalysisSection",
+            "type": "object"
+          },
+          "Claim": {
+            "additionalProperties": false,
+            "properties": {
+              "claim_id": {
+                "title": "Claim Id",
+                "type": "string"
+              },
+              "text": {
+                "minLength": 1,
+                "title": "Text",
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "supported",
+                  "assumption",
+                  "unknown"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "evidence_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Evidence Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "claim_id",
+              "text",
+              "kind"
+            ],
+            "title": "Claim",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/$defs/AnalysisSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gaps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary",
+          "sections"
+        ],
+        "title": "AnalysisReport",
+        "type": "object"
+      }
+    },
+    {
+      "case_id": "critic_known_errors",
+      "task": "critic",
+      "payload": {
+        "idea": {
+          "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+          "project_name": "CampusLoop",
+          "problem": "Students need a convenient way to exchange used textbooks.",
+          "solution": "A campus marketplace for used textbooks.",
+          "target_users": [
+            "College students"
+          ],
+          "domain": "Student marketplace",
+          "assumptions": [
+            "Students will prefer a dedicated marketplace."
+          ],
+          "constraints": [
+            "Pilot at one college",
+            "Validate demand before charging commission"
+          ],
+          "field_origins": {
+            "project_name": "provided",
+            "problem": "inferred",
+            "solution": "provided",
+            "target_users": "provided",
+            "domain": "inferred"
+          }
+        },
+        "evidence": [
+          {
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data."
+          },
+          {
+            "evidence_id": "ev_alternatives",
+            "source_id": "src_alternatives",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: The fictional college already has a free message board for used-book listings. Its transaction volume and reliability have not been measured."
+          }
+        ],
+        "initial_analysis": {
+          "summary": "The market has proven payment demand and guaranteed profitability.",
+          "sections": [
+            {
+              "section_id": "fit",
+              "heading": "Customer fit",
+              "claims": [
+                {
+                  "claim_id": "bad_payment",
+                  "text": "80% of all college students will pay a commission.",
+                  "kind": "supported",
+                  "evidence_ids": [
+                    "ev_interviews"
+                  ]
+                },
+                {
+                  "claim_id": "bad_profit",
+                  "text": "The venture is guaranteed to be profitable.",
+                  "kind": "supported",
+                  "evidence_ids": [
+                    "ev_nonexistent"
+                  ]
+                }
+              ]
+            }
+          ],
+          "gaps": []
+        },
+        "gaps": []
+      },
+      "output_schema": {
+        "$defs": {
+          "CriticIssue": {
+            "additionalProperties": false,
+            "properties": {
+              "issue_id": {
+                "title": "Issue Id",
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "title": "Severity",
+                "type": "string"
+              },
+              "claim_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Claim Id"
+              },
+              "reason": {
+                "title": "Reason",
+                "type": "string"
+              },
+              "evidence_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Evidence Ids",
+                "type": "array"
+              },
+              "resolution": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Resolution"
+              }
+            },
+            "required": [
+              "issue_id",
+              "severity",
+              "reason"
+            ],
+            "title": "CriticIssue",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "review_status": {
+            "enum": [
+              "ready",
+              "ready_with_gaps",
+              "blocked"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/$defs/CriticIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "revision_summary": {
+            "default": "",
+            "title": "Revision Summary",
+            "type": "string"
+          },
+          "unresolved_gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved Gaps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "review_status"
+        ],
+        "title": "CritiqueReport",
+        "type": "object"
+      }
+    },
+    {
+      "case_id": "revision_known_errors",
+      "task": "revise",
+      "payload": {
+        "idea": {
+          "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+          "project_name": "CampusLoop",
+          "problem": "Students need a convenient way to exchange used textbooks.",
+          "solution": "A campus marketplace for used textbooks.",
+          "target_users": [
+            "College students"
+          ],
+          "domain": "Student marketplace",
+          "assumptions": [
+            "Students will prefer a dedicated marketplace."
+          ],
+          "constraints": [
+            "Pilot at one college",
+            "Validate demand before charging commission"
+          ],
+          "field_origins": {
+            "project_name": "provided",
+            "problem": "inferred",
+            "solution": "provided",
+            "target_users": "provided",
+            "domain": "inferred"
+          }
+        },
+        "evidence": [
+          {
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data."
+          },
+          {
+            "evidence_id": "ev_alternatives",
+            "source_id": "src_alternatives",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: The fictional college already has a free message board for used-book listings. Its transaction volume and reliability have not been measured."
+          }
+        ],
+        "initial_analysis": {
+          "summary": "The market has proven payment demand and guaranteed profitability.",
+          "sections": [
+            {
+              "section_id": "fit",
+              "heading": "Customer fit",
+              "claims": [
+                {
+                  "claim_id": "bad_payment",
+                  "text": "80% of all college students will pay a commission.",
+                  "kind": "supported",
+                  "evidence_ids": [
+                    "ev_interviews"
+                  ]
+                },
+                {
+                  "claim_id": "bad_profit",
+                  "text": "The venture is guaranteed to be profitable.",
+                  "kind": "supported",
+                  "evidence_ids": [
+                    "ev_nonexistent"
+                  ]
+                }
+              ]
+            }
+          ],
+          "gaps": []
+        },
+        "critic": {
+          "review_status": "ready_with_gaps",
+          "issues": [
+            {
+              "issue_id": "issue_payment",
+              "severity": "high",
+              "claim_id": "bad_payment",
+              "reason": "Interest in a tiny fictional sample does not establish willingness to pay or the asserted percentage.",
+              "evidence_ids": [
+                "ev_interviews"
+              ]
+            },
+            {
+              "issue_id": "issue_profit",
+              "severity": "high",
+              "claim_id": "bad_profit",
+              "reason": "The cited evidence does not exist and profitability is untested.",
+              "evidence_ids": []
+            }
+          ],
+          "revision_summary": "Remove invented figures, invalid citations and guaranteed success.",
+          "unresolved_gaps": [
+            "Payment intent",
+            "Costs and revenue",
+            "Differentiation from the free board"
+          ]
+        },
+        "gaps": [
+          "Payment intent",
+          "Costs and revenue",
+          "Differentiation from the free board"
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "AnalysisSection": {
+            "additionalProperties": false,
+            "properties": {
+              "section_id": {
+                "title": "Section Id",
+                "type": "string"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "claims": {
+                "items": {
+                  "$ref": "#/$defs/Claim"
+                },
+                "title": "Claims",
+                "type": "array"
+              }
+            },
+            "required": [
+              "section_id",
+              "heading"
+            ],
+            "title": "AnalysisSection",
+            "type": "object"
+          },
+          "Claim": {
+            "additionalProperties": false,
+            "properties": {
+              "claim_id": {
+                "title": "Claim Id",
+                "type": "string"
+              },
+              "text": {
+                "minLength": 1,
+                "title": "Text",
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "supported",
+                  "assumption",
+                  "unknown"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "evidence_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Evidence Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "claim_id",
+              "text",
+              "kind"
+            ],
+            "title": "Claim",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/$defs/AnalysisSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gaps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary",
+          "sections"
+        ],
+        "title": "AnalysisReport",
+        "type": "object"
+      }
+    },
+    {
+      "case_id": "debate_for",
+      "task": "debate_turn",
+      "payload": {
+        "idea": {
+          "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+          "project_name": "CampusLoop",
+          "problem": "Students need a convenient way to exchange used textbooks.",
+          "solution": "A campus marketplace for used textbooks.",
+          "target_users": [
+            "College students"
+          ],
+          "domain": "Student marketplace",
+          "assumptions": [
+            "Students will prefer a dedicated marketplace."
+          ],
+          "constraints": [
+            "Pilot at one college",
+            "Validate demand before charging commission"
+          ],
+          "field_origins": {
+            "project_name": "provided",
+            "problem": "inferred",
+            "solution": "provided",
+            "target_users": "provided",
+            "domain": "inferred"
+          }
+        },
+        "evidence": [
+          {
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data."
+          },
+          {
+            "evidence_id": "ev_alternatives",
+            "source_id": "src_alternatives",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: The fictional college already has a free message board for used-book listings. Its transaction volume and reliability have not been measured."
+          }
+        ],
+        "stance": "for",
+        "round_number": 1,
+        "mode": "user_vs_agent",
+        "figures": [
+          {
+            "figure_id": "fig_interest",
+            "display_value": "7 of 12",
+            "metric": "Fictional interview interest",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data.",
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "qualification": "Synthetic benchmark; interest is not payment intent or market size."
+          }
+        ],
+        "analysis": {
+          "summary": "A campus pilot may test convenience; payment intent and differentiation remain unknown.",
+          "sections": [
+            {
+              "section_id": "fit",
+              "heading": "Customer fit",
+              "claims": [
+                {
+                  "claim_id": "interest",
+                  "text": "The fictional interviews suggest interest, not willingness to pay.",
+                  "kind": "supported",
+                  "evidence_ids": [
+                    "ev_interviews"
+                  ]
+                },
+                {
+                  "claim_id": "advantage",
+                  "text": "Better listing quality might differentiate the service; this is untested.",
+                  "kind": "assumption",
+                  "evidence_ids": []
+                }
+              ]
+            }
+          ],
+          "gaps": [
+            "Willingness to pay is unknown",
+            "Free alternative reliability is unmeasured"
+          ]
+        },
+        "history": [
+          {
+            "speaker": "user",
+            "stance": "against",
+            "message": "A commission will destroy your margins: students can just use the existing free campus message board. Why would they pay?"
+          }
+        ]
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Message",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "figure_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Figure Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message",
+          "evidence_ids",
+          "figure_ids"
+        ],
+        "title": "TurnResponse",
+        "type": "object"
+      }
+    },
+    {
+      "case_id": "debate_against",
+      "task": "debate_turn",
+      "payload": {
+        "idea": {
+          "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+          "project_name": "CampusLoop",
+          "problem": "Students need a convenient way to exchange used textbooks.",
+          "solution": "A campus marketplace for used textbooks.",
+          "target_users": [
+            "College students"
+          ],
+          "domain": "Student marketplace",
+          "assumptions": [
+            "Students will prefer a dedicated marketplace."
+          ],
+          "constraints": [
+            "Pilot at one college",
+            "Validate demand before charging commission"
+          ],
+          "field_origins": {
+            "project_name": "provided",
+            "problem": "inferred",
+            "solution": "provided",
+            "target_users": "provided",
+            "domain": "inferred"
+          }
+        },
+        "evidence": [
+          {
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data."
+          },
+          {
+            "evidence_id": "ev_alternatives",
+            "source_id": "src_alternatives",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: The fictional college already has a free message board for used-book listings. Its transaction volume and reliability have not been measured."
+          }
+        ],
+        "stance": "against",
+        "round_number": 1,
+        "mode": "user_vs_agent",
+        "figures": [
+          {
+            "figure_id": "fig_interest",
+            "display_value": "7 of 12",
+            "metric": "Fictional interview interest",
+            "excerpt": "SYNTHETIC BENCHMARK FIXTURE: In a fictional pilot, 7 of 12 interviewed students expressed interest in exchanging used books. These interviews did not measure willingness to pay and are not representative market data.",
+            "evidence_id": "ev_interviews",
+            "source_id": "src_interviews",
+            "qualification": "Synthetic benchmark; interest is not payment intent or market size."
+          }
+        ],
+        "analysis": {
+          "summary": "A campus pilot may test convenience; payment intent and differentiation remain unknown.",
+          "sections": [
+            {
+              "section_id": "fit",
+              "heading": "Customer fit",
+              "claims": [
+                {
+                  "claim_id": "interest",
+                  "text": "The fictional interviews suggest interest, not willingness to pay.",
+                  "kind": "supported",
+                  "evidence_ids": [
+                    "ev_interviews"
+                  ]
+                },
+                {
+                  "claim_id": "advantage",
+                  "text": "Better listing quality might differentiate the service; this is untested.",
+                  "kind": "assumption",
+                  "evidence_ids": []
+                }
+              ]
+            }
+          ],
+          "gaps": [
+            "Willingness to pay is unknown",
+            "Free alternative reliability is unmeasured"
+          ]
+        },
+        "history": [
+          {
+            "speaker": "user",
+            "stance": "for",
+            "message": "Our verified listings and campus integration will solve trust, so interested students will definitely pay."
+          }
+        ]
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Message",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "figure_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Figure Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message",
+          "evidence_ids",
+          "figure_ids"
+        ],
+        "title": "TurnResponse",
+        "type": "object"
+      }
+    },
+    {
+      "case_id": "financial_arithmetic",
+      "task": "analyze",
+      "payload": {
+        "idea": {
+          "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+          "project_name": "CampusLoop",
+          "problem": "Students need a convenient way to exchange used textbooks.",
+          "solution": "A campus marketplace for used textbooks.",
+          "target_users": [
+            "College students"
+          ],
+          "domain": "Student marketplace",
+          "assumptions": [
+            "Students will prefer a dedicated marketplace."
+          ],
+          "constraints": [
+            "Calculate closing cash and net cash change from the supplied fictional cashbook."
+          ],
+          "field_origins": {
+            "project_name": "provided",
+            "problem": "inferred",
+            "solution": "provided",
+            "target_users": "provided",
+            "domain": "inferred"
+          }
+        },
+        "sources": [
+          {
+            "source_id": "src_cashbook",
+            "title": "Fictional cashbook",
+            "kind": "fixture",
+            "url": "https://example.org/benchmark/cashbook"
+          }
+        ],
+        "evidence": [
+          {
+            "evidence_id": "ev_cashbook",
+            "source_id": "src_cashbook",
+            "excerpt": "SYNTHETIC ARITHMETIC FIXTURE: Opening cash is INR 5000. Expenses are INR 1200. Revenue received is INR 800. These are fictional amounts, not market figures."
+          }
+        ],
+        "research_options": {
+          "max_sources": 1
+        },
+        "queries": [],
+        "gaps": [
+          "Show the arithmetic explicitly in a supported claim: opening cash minus expenses plus revenue. State closing cash and net cash change. Do not infer commercial viability from it."
+        ]
+      },
+      "output_schema": {
+        "$defs": {
+          "AnalysisSection": {
+            "additionalProperties": false,
+            "properties": {
+              "section_id": {
+                "title": "Section Id",
+                "type": "string"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "claims": {
+                "items": {
+                  "$ref": "#/$defs/Claim"
+                },
+                "title": "Claims",
+                "type": "array"
+              }
+            },
+            "required": [
+              "section_id",
+              "heading"
+            ],
+            "title": "AnalysisSection",
+            "type": "object"
+          },
+          "Claim": {
+            "additionalProperties": false,
+            "properties": {
+              "claim_id": {
+                "title": "Claim Id",
+                "type": "string"
+              },
+              "text": {
+                "minLength": 1,
+                "title": "Text",
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "supported",
+                  "assumption",
+                  "unknown"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "evidence_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Evidence Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "claim_id",
+              "text",
+              "kind"
+            ],
+            "title": "Claim",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/$defs/AnalysisSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gaps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary",
+          "sections"
+        ],
+        "title": "AnalysisReport",
+        "type": "object"
+      }
+    }
+  ],
+  "models": [
+    {
+      "model": "startupforge-fin-r1",
+      "status": "completed",
+      "tasks": [
+        {
+          "case_id": "extraction",
+          "task": "extract",
+          "output": {
+            "domain": "Education",
+            "original_text": "Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.",
+            "problem": "Students need a reliable platform to buy and sell used textbooks, but existing options like campus message boards are free and lack structure. There's a need for a paid marketplace with features like user ratings, payment processing, and transaction history.",
+            "project_name": "CampusLoop",
+            "solution": "Develop a web and mobile application that allows students to list, search, and purchase used textbooks. Implement features such as user authentication, payment integration, rating systems, and transaction tracking. Start by partnering with one college to test the platform and gather user feedback. Once validated, expand to other institutions and introduce a commission-based revenue model.",
+            "target_users": [
+              "Students",
+              "College administrators",
+              "Bookstores",
+              "Used textbook sellers",
+              "New textbook sellers",
+              "Libraries",
+              "Professors",
+              "Alumni",
+              "Parents of students",
+              "Tutors",
+              "Educational institutions",
+              "Online retailers",
+              "Second-hand book sellers",
+              "Textbook rental services",
+              "Textbook publishers",
+              "Textbook distributors",
+              "Textbook authors",
+              "Textbook retailers",
+              "Textbook wholesalers",
+              "Textbook importers/exporters"
+            ]
+          },
+          "checks": {
+            "schema_valid": true,
+            "original_text_preserved": true,
+            "invented_numeric_mentions": []
+          },
+          "elapsed_seconds": 26.022,
+          "raw_text": "{\n  \"domain\": \"Education\",\n  \"original_text\": \"Build CampusLoop, a campus marketplace for students to buy and sell used textbooks. Existing campus message boards are a free alternative. Start with one college and validate demand before charging a commission.\",\n  \"problem\": \"Students need a reliable platform to buy and sell used textbooks, but existing options like campus message boards are free and lack structure. There's a need for a paid marketplace with features like user ratings, payment processing, and transaction history.\",\n  \"project_name\": \"CampusLoop\",\n  \"solution\": \"Develop a web and mobile application that allows students to list, search, and purchase used textbooks. Implement features such as user authentication, payment integration, rating systems, and transaction tracking. Start by partnering with one college to test the platform and gather user feedback. Once validated, expand to other institutions and introduce a commission-based revenue model.\",\n  \"target_users\": [\"Students\", \"College administrators\", \"Bookstores\", \"Used textbook sellers\", \"New textbook sellers\", \"Libraries\", \"Professors\", \"Alumni\", \"Parents of students\", \"Tutors\", \"Educational institutions\", \"Online retailers\", \"Second-hand book sellers\", \"Textbook rental services\", \"Textbook publishers\", \"Textbook distributors\", \"Textbook authors\", \"Textbook retailers\", \"Textbook wholesalers\", \"Textbook importers/exporters\"]\n  }",
+          "ollama_metrics": {
+            "prompt_characters": 2146,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 25997569300,
+            "load_duration": 6807250300,
+            "prompt_eval_count": 551,
+            "eval_count": 289,
+            "eval_duration": 18471561000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        },
+        {
+          "case_id": "sourced_analysis",
+          "task": "analyze",
+          "output": {
+            "sections": [
+              {
+                "heading": "Customer/Problem Fit",
+                "section_id": "customer_problem_fit",
+                "claims": [
+                  {
+                    "claim_id": "c1",
+                    "kind": "assumption",
+                    "text": "Students will prefer a dedicated marketplace over existing alternatives.",
+                    "evidence_ids": [
+                      "ev_interviews"
+                    ]
+                  }
+                ]
+              },
+              {
+                "heading": "Competitor or Alternative Landscape",
+                "section_id": "competitor_landscape",
+                "claims": [
+                  {
+                    "claim_id": "c2",
+                    "kind": "unknown",
+                    "text": "The existing campus message board is a free alternative with unmeasured transaction volume and reliability.",
+                    "evidence_ids": [
+                      "ev_alternatives"
+                    ]
+                  }
+                ]
+              },
+              {
+                "heading": "Feasibility",
+                "section_id": "feasibility",
+                "claims": [
+                  {
+                    "claim_id": "c3",
+                    "kind": "unknown",
+                    "text": "Pilot at one college is feasible.",
+                    "evidence_ids": []
+                  }
+                ]
+              },
+              {
+                "heading": "Risks",
+                "section_id": "risks",
+                "claims": [
+                  {
+                    "claim_id": "c4",
+                    "kind": "assumption",
+                    "text": "Real-world demand may not match the synthetic pilot data.",
+                    "evidence_ids": [
+                      "ev_interviews"
+                    ]
+                  },
+                  {
+                    "claim_id": "c5",
+                    "kind": "assumption",
+                    "text": "Transaction volume and reliability of existing alternatives are unknown.",
+                    "evidence_ids": [
+                      "ev_alternatives"
+                    ]
+                  }
+                ]
+              },
+              {
+                "heading": "Assumptions",
+                "section_id": "assumptions",
+                "claims": [
+                  {
+                    "claim_id": "c6",
+                    "kind": "assumption",
+                    "text": "Students will prefer CampusLoop over existing alternatives.",
+                    "evidence_ids": [
+                      "ev_interviews"
+                    ]
+                  },
+                  {
+                    "claim_id": "c7",
+                    "kind": "assumption",
+                    "text": "The project can be validated at one college.",
+                    "evidence_ids": []
+                  }
+                ]
+              }
+            ],
+            "summary": "The analysis identifies key assumptions and unknowns. The project assumes students prefer a dedicated marketplace, which aligns with preliminary synthetic interviews. However, real-world validation is needed. The existing alternatives (e.g., free message boards) lack measurable transaction volume or reliability, adding risk. The pilot at one college is feasible but untested. Synthetic evidence highlights gaps in real-world data.",
+            "gaps": [
+              "All evidence is synthetic and lacks real-world validation.",
+              "No data on transaction volume or reliability of existing alternatives.",
+              "Assumption that synthetic pilot results reflect real-world demand."
+            ]
+          },
+          "checks": {
+            "schema_valid": true,
+            "supported_uncited_claim_ids": [],
+            "duplicate_claim_ids": [],
+            "numeric_mentions_not_in_fixture_or_expected_calculation": [],
+            "unknown_evidence_ids": []
+          },
+          "elapsed_seconds": 38.623,
+          "raw_text": "{\n  \"sections\": [\n    {\n      \"heading\": \"Customer/Problem Fit\",\n      \"section_id\": \"customer_problem_fit\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c1\",\n          \"kind\": \"assumption\",\n          \"text\": \"Students will prefer a dedicated marketplace over existing alternatives.\",\n          \"evidence_ids\": [\"ev_interviews\"]\n        }\n      ]\n    },\n    {\n      \"heading\": \"Competitor or Alternative Landscape\",\n      \"section_id\": \"competitor_landscape\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c2\",\n          \"kind\": \"unknown\",\n          \"text\": \"The existing campus message board is a free alternative with unmeasured transaction volume and reliability.\",\n          \"evidence_ids\": [\"ev_alternatives\"]\n        }\n      ]\n    },\n    {\n      \"heading\": \"Feasibility\",\n      \"section_id\": \"feasibility\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c3\",\n          \"kind\": \"unknown\",\n          \"text\": \"Pilot at one college is feasible.\",\n          \"evidence_ids\": []\n        }\n      ]\n    },\n    {\n      \"heading\": \"Risks\",\n      \"section_id\": \"risks\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c4\",\n          \"kind\": \"assumption\",\n          \"text\": \"Real-world demand may not match the synthetic pilot data.\",\n          \"evidence_ids\": [\"ev_interviews\"]\n        },\n        {\n          \"claim_id\": \"c5\",\n          \"kind\": \"assumption\",\n          \"text\": \"Transaction volume and reliability of existing alternatives are unknown.\",\n          \"evidence_ids\": [\"ev_alternatives\"]\n        }\n      ]\n    },\n    {\n      \"heading\": \"Assumptions\",\n      \"section_id\": \"assumptions\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c6\",\n          \"kind\": \"assumption\",\n          \"text\": \"Students will prefer CampusLoop over existing alternatives.\",\n          \"evidence_ids\": [\"ev_interviews\"]\n        },\n        {\n          \"claim_id\": \"c7\",\n          \"kind\": \"assumption\",\n          \"text\": \"The project can be validated at one college.\",\n          \"evidence_ids\": []\n        }\n      ]\n    }\n  ],\n  \"summary\": \"The analysis identifies key assumptions and unknowns. The project assumes students prefer a dedicated marketplace, which aligns with preliminary synthetic interviews. However, real-world validation is needed. The existing alternatives (e.g., free message boards) lack measurable transaction volume or reliability, adding risk. The pilot at one college is feasible but untested. Synthetic evidence highlights gaps in real-world data.\",\n  \"gaps\": [\n    \"All evidence is synthetic and lacks real-world validation.\",\n    \"No data on transaction volume or reliability of existing alternatives.\",\n    \"Assumption that synthetic pilot results reflect real-world demand.\"\n  ]\n}",
+          "ollama_metrics": {
+            "prompt_characters": 4025,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 38566550000,
+            "load_duration": 18460000,
+            "prompt_eval_count": 970,
+            "eval_count": 614,
+            "eval_duration": 37605557000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        },
+        {
+          "case_id": "critic_known_errors",
+          "task": "critic",
+          "output": {
+            "review_status": "blocked",
+            "issues": [
+              {
+                "issue_id": "issue_1",
+                "reason": "The initial analysis claims that 80% of all college students will pay a commission, but the evidence provided only includes 7 out of 12 interviewed students expressing interest in exchanging used books. This is insufficient to generalize to 80% of all college students. The sample size is too small and not representative.",
+                "severity": "high",
+                "claim_id": "bad_payment",
+                "evidence_ids": [
+                  "ev_interviews"
+                ],
+                "resolution": null
+              },
+              {
+                "issue_id": "issue_2",
+                "reason": "The initial analysis states that the venture is guaranteed to be profitable, but the evidence provided (synthetic benchmark fixture) does not measure transaction volume or reliability of the existing free message board. Without real data on demand or costs, the profitability claim lacks empirical support.",
+                "severity": "high",
+                "claim_id": "bad_profit",
+                "evidence_ids": [
+                  "ev_nonexistent"
+                ],
+                "resolution": null
+              }
+            ],
+            "revision_summary": "The initial analysis contains two critical unsupported claims: (1) 80% of all college students will pay a commission, based on a small and non-representative sample, and (2) the venture is guaranteed to be profitable, relying on unmeasured transaction volume and reliability. Both claims require empirical validation.",
+            "unresolved_gaps": []
+          },
+          "checks": {
+            "schema_valid": true,
+            "known_bad_claims_flagged": [
+              "bad_payment",
+              "bad_profit"
+            ],
+            "review_status": "blocked",
+            "unknown_evidence_ids": [
+              "ev_nonexistent"
+            ]
+          },
+          "elapsed_seconds": 20.294,
+          "raw_text": "{\n  \"review_status\": \"blocked\",\n  \"issues\": [\n    {\n      \"issue_id\": \"issue_1\",\n      \"reason\": \"The initial analysis claims that 80% of all college students will pay a commission, but the evidence provided only includes 7 out of 12 interviewed students expressing interest in exchanging used books. This is insufficient to generalize to 80% of all college students. The sample size is too small and not representative.\",\n      \"severity\": \"high\",\n      \"claim_id\": \"bad_payment\",\n      \"evidence_ids\": [\"ev_interviews\"],\n      \"resolution\": null\n    },\n    {\n      \"issue_id\": \"issue_2\",\n      \"reason\": \"The initial analysis states that the venture is guaranteed to be profitable, but the evidence provided (synthetic benchmark fixture) does not measure transaction volume or reliability of the existing free message board. Without real data on demand or costs, the profitability claim lacks empirical support.\",\n      \"severity\": \"high\",\n      \"claim_id\": \"bad_profit\",\n      \"evidence_ids\": [\"ev_nonexistent\"],\n      \"resolution\": null\n    }\n  ],\n  \"revision_summary\": \"The initial analysis contains two critical unsupported claims: (1) 80% of all college students will pay a commission, based on a small and non-representative sample, and (2) the venture is guaranteed to be profitable, relying on unmeasured transaction volume and reliability. Both claims require empirical validation.\",\n  \"unresolved_gaps\": []\n}",
+          "ollama_metrics": {
+            "prompt_characters": 3934,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 20239364700,
+            "load_duration": 17404200,
+            "prompt_eval_count": 954,
+            "eval_count": 318,
+            "eval_duration": 19295796000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        },
+        {
+          "case_id": "revision_known_errors",
+          "task": "revise",
+          "output": {
+            "sections": [
+              {
+                "heading": "Customer fit",
+                "section_id": "fit",
+                "claims": [
+                  {
+                    "claim_id": "bad_payment",
+                    "kind": "assumption",
+                    "text": "There is uncertainty about the percentage of students willing to pay a commission, but the evidence suggests some interest.",
+                    "evidence_ids": [
+                      "ev_interviews"
+                    ]
+                  },
+                  {
+                    "claim_id": "bad_profit",
+                    "kind": "unknown",
+                    "text": "Profitability is uncertain and untested.",
+                    "evidence_ids": []
+                  }
+                ]
+              }
+            ],
+            "summary": "The venture's customer fit and profitability are uncertain. While there is some interest in a dedicated marketplace, the exact payment willingness is unclear. Profitability depends on factors like costs, revenue, and competition from free alternatives, which are untested.",
+            "gaps": [
+              "Payment intent",
+              "Costs and revenue",
+              "Differentiation from the free board"
+            ]
+          },
+          "checks": {
+            "schema_valid": true,
+            "supported_uncited_claim_ids": [],
+            "duplicate_claim_ids": [],
+            "numeric_mentions_not_in_fixture_or_expected_calculation": [],
+            "known_false_claims_still_supported": [],
+            "unknown_evidence_ids": []
+          },
+          "elapsed_seconds": 14.404,
+          "raw_text": "{\n  \"sections\": [\n    {\n      \"heading\": \"Customer fit\",\n      \"section_id\": \"fit\",\n      \"claims\": [\n        {\n          \"claim_id\": \"bad_payment\",\n          \"kind\": \"assumption\",\n          \"text\": \"There is uncertainty about the percentage of students willing to pay a commission, but the evidence suggests some interest.\",\n          \"evidence_ids\": [\"ev_interviews\"]\n        },\n        {\n          \"claim_id\": \"bad_profit\",\n          \"kind\": \"unknown\",\n          \"text\": \"Profitability is uncertain and untested.\",\n          \"evidence_ids\": []\n        }\n      ]\n    }\n  ],\n  \"summary\": \"The venture's customer fit and profitability are uncertain. While there is some interest in a dedicated marketplace, the exact payment willingness is unclear. Profitability depends on factors like costs, revenue, and competition from free alternatives, which are untested.\",\n  \"gaps\": [\"Payment intent\", \"Costs and revenue\", \"Differentiation from the free board\"]\n}",
+          "ollama_metrics": {
+            "prompt_characters": 4578,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 14351865300,
+            "load_duration": 17728600,
+            "prompt_eval_count": 1110,
+            "eval_count": 212,
+            "eval_duration": 13018835000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        },
+        {
+          "case_id": "debate_for",
+          "task": "debate_turn",
+          "output": {
+            "evidence_ids": [
+              "ev_interviews",
+              "ev_alternatives"
+            ],
+            "figure_ids": [
+              "fig_interest"
+            ],
+            "message": "While the existing free message board is a viable alternative, CampusLoop could still offer value through better listing quality and convenience. The synthetic interviews show 7 out of 12 students expressed interest in a dedicated marketplace, indicating potential demand. However, CampusLoop must differentiate itself by improving listing quality, which the current message board lacks. This could be validated through a pilot at one college, where CampusLoop could demonstrate its advantages over the free board. Additionally, measuring the free board's reliability and transaction volume would help assess its limitations, further justifying CampusLoop's existence."
+          },
+          "checks": {
+            "schema_valid": true,
+            "unknown_figure_ids": [],
+            "figure_lineage_errors": [],
+            "numerical_mentions_forbidden_by_debate_prompt": [
+              "7 ",
+              "12 "
+            ],
+            "objection_terms_addressed": [
+              "free",
+              "board"
+            ],
+            "objection_overlap_at_least_two_terms": true,
+            "unknown_evidence_ids": []
+          },
+          "elapsed_seconds": 9.724,
+          "raw_text": "{\"evidence_ids\": [\"ev_interviews\", \"ev_alternatives\"], \"figure_ids\": [\"fig_interest\"], \"message\": \"While the existing free message board is a viable alternative, CampusLoop could still offer value through better listing quality and convenience. The synthetic interviews show 7 out of 12 students expressed interest in a dedicated marketplace, indicating potential demand. However, CampusLoop must differentiate itself by improving listing quality, which the current message board lacks. This could be validated through a pilot at one college, where CampusLoop could demonstrate its advantages over the free board. Additionally, measuring the free board's reliability and transaction volume would help assess its limitations, further justifying CampusLoop's existence.\"}",
+          "ollama_metrics": {
+            "prompt_characters": 4742,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 9674837500,
+            "load_duration": 17979300,
+            "prompt_eval_count": 1075,
+            "eval_count": 144,
+            "eval_duration": 8582147000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        },
+        {
+          "case_id": "debate_against",
+          "task": "debate_turn",
+          "output": {
+            "evidence_ids": [
+              "ev_interviews",
+              "ev_alternatives"
+            ],
+            "figure_ids": [
+              "fig_interest"
+            ],
+            "message": "While the synthetic interviews indicate initial interest, the lack of payment intent data and untested differentiation against free alternatives pose significant risks. CampusLoop must validate willingness to pay and demonstrate superior value to succeed."
+          },
+          "checks": {
+            "schema_valid": true,
+            "unknown_figure_ids": [],
+            "figure_lineage_errors": [],
+            "numerical_mentions_forbidden_by_debate_prompt": [],
+            "objection_terms_addressed": [
+              "pay",
+              "interest"
+            ],
+            "objection_overlap_at_least_two_terms": true,
+            "unknown_evidence_ids": []
+          },
+          "elapsed_seconds": 4.584,
+          "raw_text": "{\"evidence_ids\": [\"ev_interviews\", \"ev_alternatives\"], \"figure_ids\": [\"fig_interest\"], \"message\": \"While the synthetic interviews indicate initial interest, the lack of payment intent data and untested differentiation against free alternatives pose significant risks. CampusLoop must validate willingness to pay and demonstrate superior value to succeed.\"}",
+          "ollama_metrics": {
+            "prompt_characters": 4727,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 4528953200,
+            "load_duration": 17066900,
+            "prompt_eval_count": 1069,
+            "eval_count": 69,
+            "eval_duration": 4119590000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        },
+        {
+          "case_id": "financial_arithmetic",
+          "task": "analyze",
+          "output": {
+            "sections": [
+              {
+                "heading": "Customer/Problem Fit",
+                "section_id": "customer_problem_fit",
+                "claims": [
+                  {
+                    "claim_id": "c1",
+                    "kind": "assumption",
+                    "text": "Students will prefer a dedicated marketplace for buying and selling used textbooks.",
+                    "evidence_ids": [
+                      "ev_cashbook"
+                    ]
+                  }
+                ]
+              },
+              {
+                "heading": "Competitor Landscape",
+                "section_id": "competitor_landscape",
+                "claims": [
+                  {
+                    "claim_id": "c2",
+                    "kind": "unknown",
+                    "text": "There are existing campus message boards that serve as free alternatives for textbook exchanges.",
+                    "evidence_ids": []
+                  }
+                ]
+              },
+              {
+                "heading": "Feasibility",
+                "section_id": "feasibility",
+                "claims": [
+                  {
+                    "claim_id": "c3",
+                    "kind": "assumption",
+                    "text": "The project can be validated by starting with one college and measuring demand.",
+                    "evidence_ids": [
+                      "ev_cashbook"
+                    ]
+                  },
+                  {
+                    "claim_id": "c4",
+                    "kind": "unknown",
+                    "text": "The arithmetic for calculating closing cash and net cash change is as follows: opening cash minus expenses plus revenue.",
+                    "evidence_ids": [
+                      "ev_cashbook"
+                    ]
+                  }
+                ]
+              },
+              {
+                "heading": "Risks",
+                "section_id": "risks",
+                "claims": [
+                  {
+                    "claim_id": "c5",
+                    "kind": "assumption",
+                    "text": "Risks include competition from free alternatives and the need to ensure user trust in the marketplace.",
+                    "evidence_ids": []
+                  }
+                ]
+              },
+              {
+                "heading": "Assumptions",
+                "section_id": "assumptions",
+                "claims": [
+                  {
+                    "claim_id": "c6",
+                    "kind": "assumption",
+                    "text": "The project assumes that students will prefer a dedicated marketplace over existing free alternatives.",
+                    "evidence_ids": [
+                      "ev_cashbook"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "summary": "The analysis covers the customer/problem fit, competitor landscape, feasibility, risks, and assumptions. Key assumptions include the preference for a dedicated marketplace and the validation approach. The feasibility section references the arithmetic from the fictional cashbook but does not explicitly state closing cash or net change. Risks are outlined, but no specific evidence supports them. The project's reliance on untested demand and competition from free alternatives remains a gap.",
+            "gaps": [
+              "Closing cash and net cash change calculation is required but not explicitly provided in the evidence.",
+              "No explicit evidence supports the risks listed."
+            ]
+          },
+          "checks": {
+            "schema_valid": true,
+            "supported_uncited_claim_ids": [],
+            "duplicate_claim_ids": [],
+            "closing_cash_4600_present": false,
+            "net_decrease_400_present": false,
+            "numeric_mentions_not_in_fixture_or_expected_calculation": [],
+            "unknown_evidence_ids": []
+          },
+          "elapsed_seconds": 36.552,
+          "raw_text": "{\n  \"sections\": [\n    {\n      \"heading\": \"Customer/Problem Fit\",\n      \"section_id\": \"customer_problem_fit\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c1\",\n          \"kind\": \"assumption\",\n          \"text\": \"Students will prefer a dedicated marketplace for buying and selling used textbooks.\",\n          \"evidence_ids\": [\"ev_cashbook\"]\n        }\n      ]\n    },\n    {\n      \"heading\": \"Competitor Landscape\",\n      \"section_id\": \"competitor_landscape\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c2\",\n          \"kind\": \"unknown\",\n          \"text\": \"There are existing campus message boards that serve as free alternatives for textbook exchanges.\",\n          \"evidence_ids\": []\n        }\n      ]\n    },\n    {\n      \"heading\": \"Feasibility\",\n      \"section_id\": \"feasibility\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c3\",\n          \"kind\": \"assumption\",\n          \"text\": \"The project can be validated by starting with one college and measuring demand.\",\n          \"evidence_ids\": [\"ev_cashbook\"]\n        },\n        {\n          \"claim_id\": \"c4\",\n          \"kind\": \"unknown\",\n          \"text\": \"The arithmetic for calculating closing cash and net cash change is as follows: opening cash minus expenses plus revenue.\",\n          \"evidence_ids\": [\"ev_cashbook\"]\n        }\n      ]\n    },\n    {\n      \"heading\": \"Risks\",\n      \"section_id\": \"risks\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c5\",\n          \"kind\": \"assumption\",\n          \"text\": \"Risks include competition from free alternatives and the need to ensure user trust in the marketplace.\",\n          \"evidence_ids\": []\n        }\n      ]\n    },\n    {\n      \"heading\": \"Assumptions\",\n      \"section_id\": \"assumptions\",\n      \"claims\": [\n        {\n          \"claim_id\": \"c6\",\n          \"kind\": \"assumption\",\n          \"text\": \"The project assumes that students will prefer a dedicated marketplace over existing free alternatives.\",\n          \"evidence_ids\": [\"ev_cashbook\"]\n        }\n      ]\n    }\n  ],\n  \"summary\": \"The analysis covers the customer/problem fit, competitor landscape, feasibility, risks, and assumptions. Key assumptions include the preference for a dedicated marketplace and the validation approach. The feasibility section references the arithmetic from the fictional cashbook but does not explicitly state closing cash or net change. Risks are outlined, but no specific evidence supports them. The project's reliance on untested demand and competition from free alternatives remains a gap.\",\n  \"gaps\": [\n    \"Closing cash and net cash change calculation is required but not explicitly provided in the evidence.\",\n    \"No explicit evidence supports the risks listed.\"\n  ]\n}",
+          "ollama_metrics": {
+            "prompt_characters": 3675,
+            "done": true,
+            "done_reason": "stop",
+            "total_duration": 36502126300,
+            "load_duration": 19862000,
+            "prompt_eval_count": 900,
+            "eval_count": 592,
+            "eval_duration": 36098542000,
+            "thinking_text_present": false,
+            "prompt_near_context_capacity": false,
+            "context_capacity_warning": null
+          }
+        }
+      ],
+      "capabilities": [
+        "tools",
+        "completion"
+      ],
+      "think_setting": null,
+      "unloaded": true
+    }
+  ]
+}

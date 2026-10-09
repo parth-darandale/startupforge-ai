@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "ModuleCapability": {
+      "additionalProperties": false,
+      "properties": {
+        "member": {
+          "title": "Member",
+          "type": "integer"
+        },
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "required_adapter": {
+          "title": "Required Adapter",
+          "type": "string"
+        },
+        "expected_folder": {
+          "title": "Expected Folder",
+          "type": "string"
+        },
+        "api_routes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Api Routes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "member",
+        "module",
+        "available",
+        "required_adapter",
+        "expected_folder",
+        "api_routes"
+      ],
+      "title": "ModuleCapability",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "modules": {
+      "items": {
+        "$ref": "#/$defs/ModuleCapability"
+      },
+      "title": "Modules",
+      "type": "array"
+    }
+  },
+  "required": [
+    "modules"
+  ],
+  "title": "ModuleStatus",
+  "type": "object"
+}

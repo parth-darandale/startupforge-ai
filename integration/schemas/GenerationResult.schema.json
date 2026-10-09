@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "ContextReference": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "context_version": {
+          "minimum": 1,
+          "title": "Context Version",
+          "type": "integer"
+        },
+        "context_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Context Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "context_version",
+        "context_hash"
+      ],
+      "title": "ContextReference",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "enum": [
+        "pitch_deck",
+        "poster",
+        "report"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "context_ref": {
+      "$ref": "#/$defs/ContextReference"
+    },
+    "artifact_ids": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Artifact Ids",
+      "type": "array"
+    },
+    "file_ids": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "File Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "kind",
+    "context_ref",
+    "artifact_ids",
+    "file_ids"
+  ],
+  "title": "GenerationResult",
+  "type": "object"
+}

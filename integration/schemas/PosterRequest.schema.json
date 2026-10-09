@@ -1,0 +1,575 @@
+{
+  "$defs": {
+    "AnalysisReport": {
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/AnalysisSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Gaps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "summary",
+        "sections"
+      ],
+      "title": "AnalysisReport",
+      "type": "object"
+    },
+    "AnalysisSection": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "heading": {
+          "title": "Heading",
+          "type": "string"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "Claims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "section_id",
+        "heading"
+      ],
+      "title": "AnalysisSection",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "supported",
+            "assumption",
+            "unknown"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "kind"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "CriticIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "issue_id": {
+          "title": "Issue Id",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Id"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution"
+        }
+      },
+      "required": [
+        "issue_id",
+        "severity",
+        "reason"
+      ],
+      "title": "CriticIssue",
+      "type": "object"
+    },
+    "CritiqueReport": {
+      "additionalProperties": false,
+      "properties": {
+        "review_status": {
+          "enum": [
+            "ready",
+            "ready_with_gaps",
+            "blocked"
+          ],
+          "title": "Review Status",
+          "type": "string"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/CriticIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "revision_summary": {
+          "default": "",
+          "title": "Revision Summary",
+          "type": "string"
+        },
+        "unresolved_gaps": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved Gaps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "review_status"
+      ],
+      "title": "CritiqueReport",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "excerpt": {
+          "minLength": 1,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locator"
+        },
+        "relevance_score": {
+          "default": 0.0,
+          "title": "Relevance Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "source_id",
+        "excerpt"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "ExecutionInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "demo",
+            "live"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "llm_provider": {
+          "title": "Llm Provider",
+          "type": "string"
+        },
+        "search_provider": {
+          "title": "Search Provider",
+          "type": "string"
+        },
+        "retrieval_method": {
+          "title": "Retrieval Method",
+          "type": "string"
+        },
+        "revision_passes": {
+          "default": 0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Revision Passes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mode",
+        "llm_provider",
+        "search_provider",
+        "retrieval_method"
+      ],
+      "title": "ExecutionInfo",
+      "type": "object"
+    },
+    "IdeaSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "original_text": {
+          "maxLength": 12000,
+          "minLength": 10,
+          "title": "Original Text",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Project Name",
+          "type": "string"
+        },
+        "problem": {
+          "maxLength": 3000,
+          "minLength": 1,
+          "title": "Problem",
+          "type": "string"
+        },
+        "solution": {
+          "maxLength": 3000,
+          "minLength": 1,
+          "title": "Solution",
+          "type": "string"
+        },
+        "target_users": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Target Users",
+          "type": "array"
+        },
+        "domain": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Domain",
+          "type": "string"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "constraints": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Constraints",
+          "type": "array"
+        },
+        "field_origins": {
+          "additionalProperties": {
+            "enum": [
+              "provided",
+              "inferred",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "title": "Field Origins",
+          "type": "object"
+        }
+      },
+      "required": [
+        "original_text",
+        "project_name",
+        "problem",
+        "solution",
+        "domain"
+      ],
+      "title": "IdeaSpec",
+      "type": "object"
+    },
+    "PosterOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "template_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Template Id",
+          "type": "string"
+        },
+        "audience": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Audience",
+          "type": "string"
+        }
+      },
+      "required": [
+        "template_id",
+        "audience"
+      ],
+      "title": "PosterOptions",
+      "type": "object"
+    },
+    "ProjectContext": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "idea": {
+          "$ref": "#/$defs/IdeaSpec"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceItem"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "initial_analysis": {
+          "$ref": "#/$defs/AnalysisReport"
+        },
+        "final_analysis": {
+          "$ref": "#/$defs/AnalysisReport"
+        },
+        "critic": {
+          "$ref": "#/$defs/CritiqueReport"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "execution": {
+          "$ref": "#/$defs/ExecutionInfo"
+        },
+        "figures": {
+          "items": {
+            "$ref": "#/$defs/SourcedFigure"
+          },
+          "title": "Figures",
+          "type": "array"
+        },
+        "project_id": {
+          "title": "Project Id",
+          "type": "string"
+        },
+        "context_version": {
+          "minimum": 1,
+          "title": "Context Version",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idea",
+        "sources",
+        "evidence",
+        "initial_analysis",
+        "final_analysis",
+        "critic",
+        "execution",
+        "project_id",
+        "context_version",
+        "created_at",
+        "content_hash"
+      ],
+      "title": "ProjectContext",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "publisher": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Publisher"
+        },
+        "kind": {
+          "default": "web",
+          "enum": [
+            "web",
+            "fixture"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "title",
+        "url"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "SourcedFigure": {
+      "additionalProperties": false,
+      "properties": {
+        "figure_id": {
+          "title": "Figure Id",
+          "type": "string"
+        },
+        "display_value": {
+          "title": "Display Value",
+          "type": "string"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "excerpt": {
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "qualification": {
+          "title": "Qualification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "figure_id",
+        "display_value",
+        "metric",
+        "excerpt",
+        "evidence_id",
+        "source_id",
+        "qualification"
+      ],
+      "title": "SourcedFigure",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "$ref": "#/$defs/ProjectContext"
+    },
+    "options": {
+      "$ref": "#/$defs/PosterOptions"
+    }
+  },
+  "required": [
+    "context",
+    "options"
+  ],
+  "title": "PosterRequest",
+  "type": "object"
+}

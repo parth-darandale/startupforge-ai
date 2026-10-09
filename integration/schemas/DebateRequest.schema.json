@@ -1,0 +1,46 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "project_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Project Id",
+      "type": "string"
+    },
+    "analysis_id": {
+      "title": "Analysis Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "user_vs_agent",
+        "agent_vs_agent"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "user_stance": {
+      "default": "for",
+      "enum": [
+        "for",
+        "against"
+      ],
+      "title": "User Stance",
+      "type": "string"
+    },
+    "max_rounds": {
+      "default": 3,
+      "maximum": 5,
+      "minimum": 1,
+      "title": "Max Rounds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "project_id",
+    "analysis_id",
+    "mode"
+  ],
+  "title": "DebateRequest",
+  "type": "object"
+}

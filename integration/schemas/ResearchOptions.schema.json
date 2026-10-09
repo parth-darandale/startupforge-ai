@@ -1,0 +1,41 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "max_sources": {
+      "default": 5,
+      "maximum": 8,
+      "minimum": 1,
+      "title": "Max Sources",
+      "type": "integer"
+    },
+    "language": {
+      "default": "en",
+      "pattern": "^[a-z]{2}$",
+      "title": "Language",
+      "type": "string"
+    },
+    "region": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Region"
+    },
+    "source_urls": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Source Urls",
+      "type": "array"
+    }
+  },
+  "title": "ResearchOptions",
+  "type": "object"
+}
