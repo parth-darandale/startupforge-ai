@@ -66,7 +66,7 @@ def main():
         try:
             report["health"] = get("/api/v1/health")
             assert report["health"]["mode"] == "live"
-            assert report["health"]["providers"]["discovery"] == "bing_news"
+            assert report["health"]["providers"]["discovery"] == "ddgs"
             response = client.post("/api/v1/projects", json={"display_name": "SunQuote upgraded workflow", "idea_text": IDEA})
             response.raise_for_status()
             project = response.json()

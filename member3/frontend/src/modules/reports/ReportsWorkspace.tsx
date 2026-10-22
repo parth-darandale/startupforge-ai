@@ -40,6 +40,7 @@ export function ReportsWorkspace() {
 
   useEffect(() => {
     setManifest(null); setRecord(null); setContent(null); setContext(null)
+    setError(''); setStatus('')
     if (!projectId) return
     Promise.all([api.context(projectId), api.artifacts(projectId, 'report')]).then(([saved, generated]) => {
       setContext(saved); setArtifacts(generated.items)

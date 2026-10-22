@@ -46,8 +46,8 @@ class Settings:
     ollama_context_bytes_per_token: float = 3.0
     search_provider: str = "wikipedia"
     tavily_api_key: str = ""
-    web_discovery_provider: str = "bing_news"
-    web_search_engines: str = "brave"
+    web_discovery_provider: str = "ddgs"
+    web_search_engines: str = "yahoo,duckduckgo"
     web_search_region: str = "in-en"
     web_request_timeout: float = 15.0
     retrieval_provider: str = "keyword"
@@ -75,8 +75,8 @@ class Settings:
             ollama_context_bytes_per_token=_env_number("OLLAMA_CONTEXT_BYTES_PER_TOKEN", "3"),
             search_provider=os.getenv("SEARCH_PROVIDER", "wikipedia"),
             tavily_api_key=os.getenv("TAVILY_API_KEY", ""),
-            web_discovery_provider=os.getenv("WEB_DISCOVERY_PROVIDER", "bing_news"),
-            web_search_engines=os.getenv("WEB_SEARCH_ENGINES", "brave"),
+            web_discovery_provider=os.getenv("WEB_DISCOVERY_PROVIDER", "ddgs"),
+            web_search_engines=os.getenv("WEB_SEARCH_ENGINES", "yahoo,duckduckgo"),
             web_search_region=os.getenv("WEB_SEARCH_REGION", "in-en"),
             web_request_timeout=_env_number("WEB_REQUEST_TIMEOUT", "15"),
             retrieval_provider=os.getenv("RETRIEVAL_PROVIDER", "keyword"),

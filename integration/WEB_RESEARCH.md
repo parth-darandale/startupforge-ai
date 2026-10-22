@@ -6,8 +6,8 @@ The app now fetches publication pages rather than treating search snippets as ma
 
 | Project | Job | Choice for this app |
 |---|---|---|
-| [Bing News RSS](https://blogs.bing.com/search/April-2008/News-Search-%E2%80%93-now-with-RSS) | Keyless discovery of publisher URLs from a public news feed | Current default. Locally verified discovery and full-page retrieval for two business topics. Coverage is news-only; it does not search the whole web. |
-| [DDGS](https://github.com/deedy5/ddgs) | Keyless URL discovery through public search sites | Selectable alternative with explicitly configured engines. Initial local probes returned no usable results; this remains access-dependent. |
+| [DDGS](https://github.com/deedy5/ddgs) | Keyless URL discovery through public search sites | Current default with Yahoo and DuckDuckGo engines. A live campus-meals probe found and fetched five full pages; access still depends on network and provider availability. |
+| [Bing News RSS](https://blogs.bing.com/search/April-2008/News-Search-%E2%80%93-now-with-RSS) | Keyless discovery of publisher URLs from a public news feed | Optional news-only mode. It returned no matches for the latest campus-meals research run and does not search the whole web. |
 | [Trafilatura](https://github.com/adbar/trafilatura) | Main HTML text, tables and metadata extraction | Implemented with bounded public HTTP fetching. Live public pages downloaded successfully. |
 | [Crawl4AI](https://github.com/unclecode/crawl4ai) | Browser rendering/crawling and extraction | Useful future adapter for JavaScript pages; heavier browser setup. Self-hosted crawling does not include its cloud search API. |
 | [ScrapeGraphAI](https://github.com/ScrapeGraphAI/Scrapegraph-ai) | LLM-directed scraping graphs, including local Ollama | Current main requires Python 3.12; this workspace uses Python 3.10. Existing pipeline already supplies analysis/review. |
@@ -16,7 +16,7 @@ The app now fetches publication pages rather than treating search snippets as ma
 ## End-to-end data flow
 
 1. Review the structured idea.
-2. If `source_urls` is empty, generate up to three concise queries: a core topic, market/pricing, and competitors/feasibility. The default Bing News RSS adapter discovers publisher URLs; `WEB_DISCOVERY_PROVIDER=ddgs` selects the alternative. If URLs are supplied, skip discovery and fetch those pages only.
+2. If `source_urls` is empty, generate up to three concise queries: a core topic, market/pricing, and competitors/feasibility. DDGS with Yahoo and DuckDuckGo discovers publisher URLs by default; `WEB_DISCOVERY_PROVIDER=bing_news` selects the news-only alternative. If URLs are supplied, skip discovery and fetch those pages only.
 3. Download accessible public HTML/PDF sources with public-address and redirect validation, DNS pinning, robots rules, per-host pacing, timeouts and size limits. Inaccessible pages create visible warnings and gaps.
 4. Trafilatura extracts main text and HTML tables. pypdf extracts text-based PDF pages; scanned PDFs require a future OCR adapter.
 5. Before filling the retained-source budget, omit fetched pages without the reviewed solution's topic. Audience, region, domain or generic market terms alone cannot qualify a source. Keyword retrieval uses the reviewed solution and selects at most six passages; off-topic passages are omitted again. Every retained passage keeps its source ID, URL and locator. This conservative lexical selection does not prove semantic relevance or claim support.
@@ -27,13 +27,13 @@ The app now fetches publication pages rather than treating search snippets as ma
 
 ```dotenv
 SEARCH_PROVIDER=web
-WEB_DISCOVERY_PROVIDER=bing_news
-WEB_SEARCH_ENGINES=brave
+WEB_DISCOVERY_PROVIDER=ddgs
+WEB_SEARCH_ENGINES=yahoo,duckduckgo
 WEB_SEARCH_REGION=in-en
 WEB_REQUEST_TIMEOUT=20
 ```
 
-`WEB_DISCOVERY_PROVIDER` accepts `bing_news` (default) or `ddgs`. `WEB_SEARCH_ENGINES` is used only for DDGS; names must be enabled in the installed version, and `auto`/encyclopedia engines are excluded. `WEB_SEARCH_REGION` is a discovery locale; `research_options.region` also qualifies queries. Neither proves geographic applicability. No keys are required by the RSS adapter.
+`WEB_DISCOVERY_PROVIDER` accepts `ddgs` (default) or `bing_news`. `WEB_SEARCH_ENGINES` is used only for DDGS; the default is `yahoo,duckduckgo`, names must be enabled in the installed version, and `auto`/encyclopedia engines are excluded. `WEB_SEARCH_REGION` is a discovery locale; `research_options.region` also qualifies queries. Neither proves geographic applicability. No API key is required, but keyless search availability may vary by network/provider.
 
 The existing `POST /api/v1/intelligence/analyses` accepts:
 
@@ -58,7 +58,7 @@ Downloads are limited to 4 MiB HTML/8 MiB PDF, twenty PDF pages and 60,000 extra
 
 Discovery XML is separately limited to 256 KiB, with public-address pinning, robots checks, per-host pacing, bounded redirects and XML entity declarations rejected. Only recognized Bing news click links are unwrapped, without following the tracking URL. Feed descriptions/dates are discarded. General Bing `/search` was disallowed by the live robots rules and is not used. Access denial, rate limiting or invalid feeds stop further discovery queries; denied publisher hosts are not retried within that research request.
 
-Every automatic news run reports that evergreen reports, competitor product/pricing pages and customer studies may be missing. Short news queries can still return unrelated stories; downloaded-content filters remove those when they fail the topic check. An empty index result does not mean relevant publications do not exist. Supplied public report URLs remain useful for deeper coverage.
+Every Bing News run reports that evergreen reports, competitor product/pricing pages and customer studies may be missing. General web search can still omit sources or return pages that cannot be fetched; those become visible gaps. An empty index result does not mean relevant publications do not exist. Supplied public report URLs remain useful for deeper coverage.
 
 Figure qualifications identify years and places explicitly mentioned in the quoted text, or state that the measurement period/geography is unknown. Opinion/interview, historical and prospective wording receive cautions. These annotations do not certify publication accuracy or make a quotation applicable to the requested market. A quoted statistic is not calculated TAM/SAM/SOM or evidence of startup demand.
 

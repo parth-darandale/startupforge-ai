@@ -46,7 +46,11 @@ export class WorkspaceApi {
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers = new Headers(init.headers)
     if (init.body) headers.set('Content-Type', 'application/json')
-    const response = await fetch(`${this.base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`, { ...init, headers })
+    const base = this.base.replace(/\/$/, '')
+    const basePath = base.replace(/^\/+/, '')
+    const route = path.replace(/^\/+/, '')
+    const relativePath = route === basePath ? '' : route.startsWith(`${basePath}/`) ? route.slice(basePath.length + 1) : route
+    const response = await fetch(`${base}/${relativePath}`, { ...init, headers })
     if (!response.ok) {
       const data = await response.json().catch(() => null) as { error?: { message?: string } } | null
       throw new Error(data?.error?.message ?? `The request failed (${response.status}).`)

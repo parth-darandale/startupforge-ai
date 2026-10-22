@@ -115,7 +115,7 @@ async def test_topic_filter_runs_before_source_budget_and_fetches_later_relevant
                     else 'Textbook resale requires checking coursebook editions and condition.')
             return ResearchDocument(source=Source(source_id=url, title=title_hint, url=url), content=text)
     reader = Reader()
-    provider = WebResearchProvider(Settings(), discovery=discover, fetcher=reader)
+    provider = WebResearchProvider(Settings(web_discovery_provider="bing_news"), discovery=discover, fetcher=reader)
     structured = IdeaSpec(original_text='Students resell coursebooks to each other.', project_name='Textbook Marketplace',
                           problem='Books cost too much.', solution='Textbook resale marketplace.', domain='Education')
     batch = await provider.search_for_idea(['textbook resale India'], ResearchOptions(max_sources=1), structured)
@@ -123,6 +123,12 @@ async def test_topic_filter_runs_before_source_budget_and_fetches_later_relevant
     assert len(batch.documents) == 1 and batch.documents[0].source.url.endswith('/relevant')
     assert any('news RSS' in gap for gap in batch.gaps)
     assert any('off-topic' in gap for gap in batch.gaps)
+
+
+def test_default_discovery_uses_general_search_engines():
+    settings = Settings()
+    assert settings.web_discovery_provider == "ddgs"
+    assert settings.web_search_engines == "yahoo,duckduckgo"
 
 
 @pytest.mark.asyncio

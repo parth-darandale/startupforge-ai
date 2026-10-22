@@ -82,8 +82,8 @@ OLLAMA_KEEP_ALIVE=5m
 OLLAMA_THINK=default
 OLLAMA_CONTEXT_BYTES_PER_TOKEN=3
 SEARCH_PROVIDER=web
-WEB_DISCOVERY_PROVIDER=bing_news
-WEB_SEARCH_ENGINES=brave
+WEB_DISCOVERY_PROVIDER=ddgs
+WEB_SEARCH_ENGINES=yahoo,duckduckgo
 WEB_SEARCH_REGION=in-en
 WEB_REQUEST_TIMEOUT=20
 RETRIEVAL_PROVIDER=keyword
@@ -96,7 +96,7 @@ The alternate local model is `startupforge-fin-r1`. After installing it, change 
 
 For a fresh local-model setup, `member1/backend/scripts/download_model_assets.py runtime` downloads and verifies the pinned official Windows runtime. Run the launcher, then use `member1/backend/.runtime/ollama-v0.40.1/ollama.exe pull qwen3:4b-instruct-2507-q4_K_M` against the local server. For Fin-R1, install the optional client in `member1/backend/requirements-models.txt`, run `member1/backend/scripts/download_hub_asset.py fin_r1`, then `member1/backend/scripts/import_finance_models.py fin_r1` to verify and import its weights. These downloads are several gigabytes each and are separate from the app dependencies.
 
-`SEARCH_PROVIDER=web` now discovers publisher URLs through [Bing News RSS](https://blogs.bing.com/search/April-2008/News-Search-%E2%80%93-now-with-RSS), then uses [Trafilatura](https://github.com/adbar/trafilatura) and [pypdf](https://github.com/py-pdf/pypdf) to fetch public HTML/PDF text. Set `WEB_DISCOVERY_PROVIDER=bing_news` (the default). Discovery requires no API key, but covers news publications rather than the whole web. Up to three concise topic/business queries supply at most sixteen fetched candidates and eight retained sources. Feed descriptions and external title hints never become numerical evidence. Live automatic fetching succeeded for rooftop solar and grocery delivery; missing reports, competitor/pricing pages, customer studies and numbers remain explicit gaps. `WEB_DISCOVERY_PROVIDER=ddgs` keeps [DDGS](https://github.com/deedy5/ddgs) selectable with explicit engines, although its earlier local probes failed. See [current sourcing checks and limitations](integration/WEB_RESEARCH.md).
+`SEARCH_PROVIDER=web` discovers candidate publisher URLs through [DDGS](https://github.com/deedy5/ddgs), using Yahoo and DuckDuckGo by default, then uses [Trafilatura](https://github.com/adbar/trafilatura) and [pypdf](https://github.com/py-pdf/pypdf) to fetch public HTML/PDF text. The default engines found and fetched five pages in a live campus-meals probe; keyless search access can still vary by network and provider. Up to three concise topic/business queries supply at most sixteen fetched candidates and eight retained sources. Search titles and snippets never become numerical evidence. Set `WEB_DISCOVERY_PROVIDER=bing_news` for the optional Bing News RSS mode, which covers news rather than the whole web. See [current sourcing checks and limitations](integration/WEB_RESEARCH.md).
 
 The optional **Report or article URLs** field accepts up to eight public URLs. Entering URLs skips discovery and fetches only those pages, bounded by the requested source count. This path successfully downloaded full pages from Our World in Data and the World Bank during live checks. Robots exclusions/access denial, inaccessible pages and unreadable PDFs produce visible gaps rather than substituted snippets or synthetic numbers. The fetcher checks public network addresses and redirects, pins DNS addresses, preserves the actual fetched path, observes robots rules and spaces requests to a host. HTML downloads are capped at 4 MiB, PDFs at 8 MiB, PDF text at the first twenty pages, extracted text at 60,000 characters and model evidence at six selected passages. Partial extraction is labelled. JavaScript-only content, scanned PDFs, spreadsheets and paywalled content need a different accessible publication or future adapter. Publication metadata, when available, remains publisher-declared; retrieval time is not publication time.
 

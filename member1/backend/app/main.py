@@ -110,7 +110,7 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
                 "providers": {"llm": getattr(service.llm, "name", "unconfigured") if service else "unconfigured",
                               "search": getattr(service.search, "name", "unconfigured") if service else "unconfigured",
                               "retrieval": getattr(service.retriever, "method", "unconfigured") if service else "unconfigured",
-                              **({"discovery": getattr(config, "web_discovery_provider", "bing_news")}
+                              **({"discovery": getattr(config, "web_discovery_provider", "ddgs")}
                                  if config.app_mode == "live" and config.search_provider == "web" and configuration_error is None else {})},
                 "capabilities": {"debate": True, "integration_endpoints": True,
                                  "pitch_decks": modules.visual_studio is not None,
