@@ -2,55 +2,37 @@
 
 ```text
 startupforge-ai/                    Repository checkout (original implementation folder)
-  README.md                        Setup and usage
-  IMPLEMENTATION_PLAN.md           Three-member division and integration plan
-  StartupForge.exe                 Windows workspace launcher
-  Start-Member1.ps1                 PowerShell startup alternative
-  launcher/                        Launcher source, rebuild script and checks
+  README.md                         Setup and integrated app guide
+  IMPLEMENTATION_PLAN.md            Three-member division and integration plan
+  StartupForge.exe                  Windows workspace launcher
+  Start-Member1.ps1                  PowerShell startup alternative
+  launcher/                         Launcher source and rebuild instructions
   member1/
-    backend/                       Working FastAPI app
-      app/modules/intelligence/    Member 1 feature services and API
-      app/harness/                 Temporary project/job/SQLite adapters
-      app/integration/             Connections for future teammate adapters
-      scripts/                     Startup and optional model download tools
-      tests/
-      .env.example                 Credential-free demo configuration template
-    frontend/
-      src/modules/intelligence/    Mountable React feature
+    backend/app/modules/intelligence/ Idea extraction, research, analysis, debate and API
+    backend/app/harness/             Compatibility imports for older callers
+    backend/app/integration/         Shared generator contracts and routes
+    frontend/src/modules/intelligence/ Idea Intelligence React workspace
   member2/
-    backend/                       Placeholder for Pitch and Visual Studio
-    frontend/
-    templates/
-    tests/
+    backend/startupforge_member2/    Pitch deck and poster generation/rendering
+    frontend/src/modules/visualStudio/ Deck and poster editor/preview
+    templates/                       Reserved for additional deck/poster themes
+    tests/                           Module test location
   member3/
-    backend/                       Placeholder for Report and Project Workspace
-    frontend/
-    templates/
-    tests/
-  integration/                     Shared schemas, fixtures, contracts and summaries
-    model_trials/                  Curated synthetic two-model comparison
-    web_trials/                    Public live-workflow summary
-    qa/                            Verification summaries
-  output/                          Implementation deliverable documents
+    backend/startupforge_member3/    Reports, SQLite project/job store, artifact files and workspace routes
+    backend/data/files/              Generated output bytes (ignored by Git)
+    frontend/src/app/                Integrated navigation shell
+    frontend/src/api.ts              Shared workspace API client
+    frontend/src/modules/reports/    Report editor, preview and exports
+    frontend/src/modules/workspace/  Project and artifact library
+    templates/                       Reserved for additional report templates
+    tests/                           Module test location
+  integration/                      Shared schemas, fixtures, contracts and summaries
+    model_trials/                    Curated two-model comparison
+    web_trials/                      Live sourcing workflow notes
+    qa/                              Verification and migration summaries
+  output/                            Implementation deliverable documents
 ```
 
-Launch the app and run its setup commands from the repository root. This checkout
-contains the implementation only; the original synopsis and review materials
-remain separate in the local capstone workspace.
+Run setup and launch commands from the repository root. The original synopsis and review files remain in the parent capstone folder. Local `.env`, `.venv`, `node_modules`, `dist`, runtime downloads, models, SQLite databases, generated files and raw QA evidence are excluded from publication. A fresh checkout starts in demo mode; live local AI uses Ollama and separately downloaded model weights.
 
-Create the Python virtual environment, install backend and frontend dependencies,
-copy `.env.example` to `.env`, and build the frontend as described in the root
-README. Local `.env`, `.venv`, `node_modules`, `dist`, runtime downloads, models,
-SQLite databases, raw application exports and QA screenshots are excluded from
-publication. A fresh checkout starts in demo mode. Live local AI requires an
-Ollama runtime and separately downloaded model weights; the Windows launcher also
-requires the portable runtime to be installed.
-
-Each member owns their folder. Shared contracts stay outside the member folders.
-At final assembly, Member 3 mounts the feature routers and frontend components
-and supplies shared repository/job/file adapters. The current local harness is
-replaced then. The placeholder folders are development locations, not pretend
-implementations. No teammate server is required to run Member 1.
-
-Setup commands use `python -m pip` and `python -m pytest` through the checkout's
-local `.venv` Python so they use the intended environment.
+The integrated app uses one FastAPI host and one React build. All modules consume the same immutable context versions. Member 3 registers common project, job, artifact and download endpoints once; Member 1 provides analysis and debate, Member 2 provides PPTX/TXT generation, and Member 3 provides DOCX/PDF generation and the workspace shell. See `MODULE_CONNECTIONS.md` for route and version details.

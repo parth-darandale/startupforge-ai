@@ -1,6 +1,7 @@
-"""Standalone Member 1 host; feature routers are independent of this harness."""
+"""Integrated StartupForge host with shared workspace and three feature modules."""
 from contextlib import asynccontextmanager
 import re
+import sys
 import uuid
 from pathlib import Path
 
@@ -11,9 +12,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .harness.jobs import LocalJobRunner
-from .harness.router import build_harness_router
-from .harness.store import SQLiteStore
 from .integration.interfaces import IntegrationAdapters, IntegrationDependencies
 from .integration.router import build_integration_router
 from .modules.intelligence.debate import DebateService
@@ -23,13 +21,31 @@ from .modules.intelligence.router import IntelligenceDependencies, build_router
 from .modules.intelligence.settings import BACKEND_ROOT, Settings
 
 
-def create_app(settings: Settings | None = None, *, integration_adapters: IntegrationAdapters | None = None) -> FastAPI:
+IMPLEMENTATION_ROOT = BACKEND_ROOT.parents[1]
+for module_backend in (IMPLEMENTATION_ROOT / "member2" / "backend", IMPLEMENTATION_ROOT / "member3" / "backend"):
+    if module_backend.is_dir() and str(module_backend) not in sys.path:
+        sys.path.insert(0, str(module_backend))
+
+from startupforge_member2.visual_studio import VisualStudioAdapter
+from startupforge_member3.core.artifacts import ArtifactStore
+from startupforge_member3.core.jobs import LocalJobRunner
+from startupforge_member3.core.projects import SQLiteStore
+from startupforge_member3.core.router import WorkspaceDependencies, build_workspace_router
+from startupforge_member3.reports import ReportsAdapter
+
+
+def create_app(settings: Settings | None = None, *, integration_adapters: IntegrationAdapters | None = None,
+               artifact_storage_root: str | Path | None = None) -> FastAPI:
     config = settings or Settings.from_env()
     path = Path(config.database_path)
     if not path.is_absolute():
         path = BACKEND_ROOT / path
     store = SQLiteStore(str(path))
     runner = LocalJobRunner(store)
+    artifacts = ArtifactStore(path, artifact_storage_root or
+                              IMPLEMENTATION_ROOT / "member3" / "backend" / "data" / "files")
+    modules = integration_adapters or IntegrationAdapters(
+        visual_studio=VisualStudioAdapter(artifacts), reports=ReportsAdapter(artifacts))
     configuration_error = None
     try:
         service = build_service(config)
@@ -37,8 +53,11 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
         service, configuration_error = None, exc
     debate = DebateService(config, store, service.llm if service else None)
     dependencies = IntelligenceDependencies(config, service, store, runner, debate, configuration_error)
-    connections = IntegrationDependencies(store, runner, integration_adapters or IntegrationAdapters(),
+    connections = IntegrationDependencies(store, runner, modules,
                                           lambda job_id, reference: store.update_job(job_id, context_ref=reference))
+    workspace = WorkspaceDependencies(store, artifacts, runner, modules,
+                                      lambda job_id, reference: store.update_job(job_id, context_ref=reference),
+                                      service, configuration_error)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -46,12 +65,13 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
         yield
         await runner.close()
 
-    app = FastAPI(title="StartupForge Idea Intelligence", version="1.0.0", lifespan=lifespan,
-                  description="Member 1 standalone module: evidence, sourced figures, analysis and debate.")
+    app = FastAPI(title="StartupForge", version="1.0.0", lifespan=lifespan,
+                  description="Integrated workspace for idea research, pitch outputs and startup reports.")
     app.state.intelligence = dependencies
     app.state.store = store
     app.state.runner = runner
     app.state.integration = connections
+    app.state.artifacts = artifacts
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                        allow_methods=["GET", "POST", "PUT", "PATCH"], allow_headers=["Content-Type", "Idempotency-Key", "X-Request-ID"])
 
@@ -83,7 +103,9 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
 
     @app.get("/api/v1/health", tags=["Standalone harness"])
     async def health():
-        return {"status": "ok", "mode": config.app_mode, "schema_version": "1.0", "modules": ["intelligence"],
+        return {"status": "ok", "mode": config.app_mode, "schema_version": "1.0",
+                "modules": ["intelligence", "visual_studio" if modules.visual_studio else None,
+                            "reports" if modules.reports else None, "workspace"],
                 "model": config.llm_model if config.app_mode == "live" else None,
                 "providers": {"llm": getattr(service.llm, "name", "unconfigured") if service else "unconfigured",
                               "search": getattr(service.search, "name", "unconfigured") if service else "unconfigured",
@@ -91,12 +113,15 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
                               **({"discovery": getattr(config, "web_discovery_provider", "bing_news")}
                                  if config.app_mode == "live" and config.search_provider == "web" and configuration_error is None else {})},
                 "capabilities": {"debate": True, "integration_endpoints": True,
+                                 "pitch_decks": modules.visual_studio is not None,
+                                 "posters": modules.visual_studio is not None,
+                                 "reports": modules.reports is not None,
                                  "live_configured": config.app_mode == "live" and configuration_error is None},
                 "configuration_message": configuration_error.message if configuration_error else None}
 
-    app.include_router(build_harness_router(store))
     app.include_router(build_router(dependencies))
     app.include_router(build_integration_router(connections))
+    app.include_router(build_workspace_router(workspace))
 
     # After npm build, the standalone backend can host the feature UI on one port.
     frontend_dist = BACKEND_ROOT.parent / "frontend" / "dist"

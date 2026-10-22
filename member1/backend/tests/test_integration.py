@@ -71,8 +71,9 @@ async def factory(tmp_path):
     clients = []
 
     async def make(adapters=None):
-        app = create_app(Settings(database_path=str(tmp_path / f"test-{len(clients)}.sqlite3"), demo_delay=0),
-                         integration_adapters=adapters)
+        index = len(clients)
+        app = create_app(Settings(database_path=str(tmp_path / f"test-{index}.sqlite3"), demo_delay=0),
+                         integration_adapters=adapters, artifact_storage_root=tmp_path / f"files-{index}")
         lifespan = app.router.lifespan_context(app)
         await lifespan.__aenter__()
         client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
@@ -113,14 +114,14 @@ ROUTES = {"pitch_deck": "/api/v1/studio/pitch-decks", "poster": "/api/v1/studio/
 async def completed(client, receipt):
     for _ in range(100):
         job = (await client.get(receipt["status_url"])).json()
-        if job["status"] in {"succeeded", "failed"}:
+        if job["status"] in {"succeeded", "partial_success", "failed"}:
             return job
         await asyncio.sleep(0.001)
     pytest.fail("Test generation job did not finish")
 
 
 async def test_missing_modules_are_explicit_and_create_no_jobs(factory):
-    app, client = await factory()
+    app, client = await factory(IntegrationAdapters())
     context = saved_context(app)
     status = (await client.get("/api/v1/integration/modules")).json()
     assert [item["member"] for item in status["modules"]] == [2, 3]
@@ -138,6 +139,69 @@ async def test_missing_modules_are_explicit_and_create_no_jobs(factory):
         assert error["request_id"] == "integration-test"
         assert error["details"]["required_adapter"] in {"VisualStudioAdapter", "ReportsAdapter"}
     assert app.state.store.list_jobs(context["project_id"]) == []
+
+
+async def test_combined_workspace_generates_and_renders_all_outputs_without_debate(factory):
+    _, client = await factory()
+    modules = (await client.get("/api/v1/integration/modules")).json()["modules"]
+    assert [item["available"] for item in modules] == [True, True]
+    assert (await client.get("/api/v1/studio/templates?kind=pitch_deck")).json()["templates"]
+    assert (await client.get("/api/v1/studio/templates?kind=poster")).json()["templates"]
+    assert (await client.get("/api/v1/reports/templates")).json()["templates"]
+
+    idea_text = "A student startup app that helps local shops manage leftover food and connect with nearby customers."
+    created = await client.post("/api/v1/projects", json={"display_name": "FoodLoop", "idea_text": idea_text})
+    assert created.status_code == 201, created.text
+    project_id = created.json()["project_id"]
+    receipt = await client.post(f"/api/v1/projects/{project_id}/runs", json={
+        "expected_latest_version": 0,
+        "idea_text": idea_text,
+        "outputs": ["pitch_deck", "poster", "report"],
+        "output_options": {
+            "pitch_deck": {"slide_count": 5, "tone": "professional"},
+            "poster": {"audience": "Local shop owners"},
+            "report": {"formats": ["docx", "pdf"]},
+        },
+    }, headers={"Idempotency-Key": "all-outputs-without-debate"})
+    assert receipt.status_code == 202, receipt.text
+    run = await completed(client, receipt.json())
+    assert run["status"] == "succeeded", run
+    assert run["result"]["failed_outputs"] == []
+    assert {item["kind"] for item in run["result"]["successful_outputs"]} == {"pitch_deck", "poster", "report"}
+
+    context = (await client.get(f"/api/v1/projects/{project_id}/context")).json()
+    assert context["context_version"] == 1
+    assert context["sources"] and context["evidence"] and context["figures"]
+    project_jobs = (await client.get(f"/api/v1/projects/{project_id}/jobs")).json()["jobs"]
+    assert not any("debate" in item["operation"] for item in project_jobs)
+
+    output_formats = {"pitch_deck": ["pptx"], "poster": ["txt"], "report": ["docx", "pdf"]}
+    expected_headers = {"pptx": b"PK", "docx": b"PK", "pdf": b"%PDF", "txt": b""}
+    for output in run["result"]["successful_outputs"]:
+        artifact_id = output["artifact_ids"][0]
+        manifest = (await client.get(f"/api/v1/artifacts/{artifact_id}")).json()
+        assert manifest["context_version"] == 1
+        saved = (await client.get(f"/api/v1/artifacts/{artifact_id}/content")).json()
+        edited_content = dict(saved["content"], title=saved["content"]["title"] + " (reviewed)")
+        edited = await client.put(f"/api/v1/artifacts/{artifact_id}/content", json={
+            "base_revision": saved["content_revision"], "content": edited_content,
+        })
+        assert edited.status_code == 200, edited.text
+        assert edited.json()["content_revision"] == 2
+
+        render = await client.post(f"/api/v1/artifacts/{artifact_id}/renders", json={
+            "content_revision": 2, "formats": output_formats[output["kind"]],
+        }, headers={"Idempotency-Key": f"render-{output['kind']}"})
+        assert render.status_code == 202, render.text
+        rendered = await completed(client, render.json())
+        assert rendered["status"] == "succeeded", rendered
+        for file_id in rendered["result"]["file_ids"]:
+            download = await client.get(f"/api/v1/files/{file_id}/download")
+            assert download.status_code == 200, download.text
+            assert len(download.content) > 100
+            fmt = output_formats[output["kind"]][rendered["result"]["file_ids"].index(file_id)]
+            if expected_headers[fmt]:
+                assert download.content.startswith(expected_headers[fmt])
 
 
 async def test_handoff_preserves_entire_saved_version_and_eligibility(factory):

@@ -109,7 +109,7 @@ export class IntelligenceApi {
           code: 'JOB_FAILED', message: 'The analysis job could not complete.', details: {}, retryable: true, request_id: '',
         }, 502)
       }
-      if (job.status === 'succeeded') return job
+      if (job.status === 'succeeded' || job.status === 'partial_success') return job
       await new Promise<void>((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(signal.reason) }
         const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve() }, 1_000)

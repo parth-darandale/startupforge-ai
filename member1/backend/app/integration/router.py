@@ -103,6 +103,9 @@ def submit_generation(deps: IntegrationDependencies, kind: str, body, key: str, 
             raise IntelligenceError("ADAPTER_RESULT_INVALID", "The generator changed its immutable input context.", 502)
         if result.context_ref != reference or result.kind != kind:
             raise IntelligenceError("ADAPTER_RESULT_INVALID", "The output does not identify the requested context and output kind.", 502)
+        artifact_store = getattr(adapter, "artifacts", None)
+        if artifact_store is not None and hasattr(artifact_store, "bind_job"):
+            artifact_store.bind_job(result.artifact_ids, receipt.job_id)
         return JobOutcome(result=result.model_dump(mode="json"))
 
     receipt = deps.jobs.submit("generate_" + kind, context.project_id, key, body.model_dump(mode="json"),

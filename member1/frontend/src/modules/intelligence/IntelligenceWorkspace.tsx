@@ -187,7 +187,7 @@ export function IntelligenceWorkspace({ apiBase = '/api/v1', onContextSaved }: I
       if (!completed.result_url) throw new Error('The analysis completed without a result link.')
       const result = await api.analysis(completed.result_url, signal)
       setAnalysis(result); setContext(result.context_draft); setPanel('reviewed')
-      setNotice('Research complete. Review the evidence or start a debate.')
+      setNotice('Research complete. Review the evidence, save the context, or optionally start a debate.')
     })
   }
 
@@ -336,7 +336,7 @@ export function IntelligenceWorkspace({ apiBase = '/api/v1', onContextSaved }: I
         <ol className="sf-stepper" aria-label="Your workflow">
           <li className={idea ? 'sf-step-complete' : 'sf-step-current'}><span>{idea ? <Icon name="check" size={14} /> : '1'}</span><strong>Define</strong></li>
           <li className={context ? 'sf-step-complete' : idea ? 'sf-step-current' : ''}><span>{context ? <Icon name="check" size={14} /> : '2'}</span><strong>Research</strong></li>
-          <li className={debate ? 'sf-step-complete' : context ? 'sf-step-current' : ''}><span>{debate ? <Icon name="check" size={14} /> : '3'}</span><strong>Debate</strong></li>
+          <li className={debate ? 'sf-step-complete' : context ? 'sf-step-current' : ''}><span>{debate ? <Icon name="check" size={14} /> : '3'}</span><strong>Debate (optional)</strong></li>
         </ol>
         {error && <div className="sf-alert sf-alert-error" role="alert"><p>{error}</p><button onClick={() => setError(null)} aria-label="Dismiss error">×</button></div>}
         {notice && <div className="sf-alert sf-alert-notice" role="status"><Icon name="check" size={17} /><p>{notice}</p><button onClick={() => setNotice(null)} aria-label="Dismiss notification">×</button></div>}
@@ -376,7 +376,7 @@ export function IntelligenceWorkspace({ apiBase = '/api/v1', onContextSaved }: I
           <div className="sf-result-heading"><h2>Research results</h2><span className={`sf-review-status sf-review-${context.critic.review_status}`}>{context.critic.review_status === 'ready' ? 'Review complete' : context.critic.review_status === 'ready_with_gaps' ? 'Evidence gaps remain' : 'Review blocked'}</span></div>
           <div className="sf-metrics"><div><span>{context.sources.length}</span><p>{context.execution.mode === 'demo' ? 'Fixture sources' : 'Research sources'}</p></div><div><span>{context.evidence.length}</span><p>Traceable excerpts</p></div><div><span>{figures.length}</span><p>Sourced statistics</p></div><div><span>{claims.filter((claim) => claim.kind !== 'supported').length}</span><p>Assumptions & unknowns</p></div></div>
           <section className="sf-card sf-debate-card" aria-labelledby={`${uid}-debate-title`}>
-            <div className="sf-card-heading"><div><span className="sf-eyebrow sf-accent">Debate room</span><h2 id={`${uid}-debate-title`}>How strong is the idea?</h2></div></div>
+            <div className="sf-card-heading"><div><span className="sf-eyebrow sf-accent">Optional debate room</span><h2 id={`${uid}-debate-title`}>How strong is the idea?</h2></div><button type="button" className="sf-text-button" onClick={() => document.getElementById(`${uid}-research-review`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} disabled={!!busy}>Skip debate</button></div>
             {!debate && <div className="sf-debate-setup">
               <div className="sf-mode-grid">
                 <button type="button" className={`sf-mode-option ${debateMode === 'user_vs_agent' ? 'sf-mode-selected' : ''}`} aria-pressed={debateMode === 'user_vs_agent'} onClick={() => setDebateMode('user_vs_agent')} disabled={!!busy}><strong>You vs. AI</strong><span>Take a side against the AI.</span></button>
@@ -402,7 +402,7 @@ export function IntelligenceWorkspace({ apiBase = '/api/v1', onContextSaved }: I
               {debate.status === 'failed' && <div className="sf-gap-box"><p>The debate was interrupted. Your arguments are preserved; start a new debate to try again.</p></div>}
             </div>}
           </section>
-          <section className="sf-card sf-research-card"><div className="sf-card-heading"><h2>Research & review</h2></div>
+          <section id={`${uid}-research-review`} className="sf-card sf-research-card"><div className="sf-card-heading"><h2>Research & review</h2></div>
             {!!context.warnings.length && <details className="sf-warning-notes"><summary>{context.warnings.length} research {context.warnings.length === 1 ? 'note' : 'notes'}</summary><ul>{context.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
             <div className="sf-tabs" role="tablist" aria-label="Research panels">{(Object.keys(panelLabels) as Panel[]).map((item) => <button key={item} id={`${uid}-tab-${item}`} type="button" role="tab" aria-selected={panel === item} aria-controls={`${uid}-panel`} tabIndex={panel === item ? 0 : -1} onClick={() => setPanel(item)} onKeyDown={(event) => navigateTabs(event, item)}>{panelLabels[item]}{item === 'figures' && <span>{figures.length}</span>}</button>)}</div>
             <div className="sf-panel" id={`${uid}-panel`} role="tabpanel" aria-labelledby={`${uid}-tab-${panel}`} tabIndex={0}>

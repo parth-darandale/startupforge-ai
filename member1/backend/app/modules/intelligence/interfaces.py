@@ -11,6 +11,7 @@ Progress = Callable[[str, int], Awaitable[None]]
 class JobOutcome:
     result: dict[str, Any] | None = None
     result_url: str | None = None
+    status: str = "succeeded"
 
 
 class IntelligenceRepository(Protocol):

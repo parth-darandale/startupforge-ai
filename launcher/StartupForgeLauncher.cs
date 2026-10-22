@@ -91,6 +91,9 @@ namespace StartupForge.Launcher
             checks["service_worker"] = File.Exists(Path.Combine(BackendDirectory, "scripts", "service_worker.py"));
             checks["portable_ollama"] = File.Exists(Path.Combine(BackendDirectory, ".runtime", "ollama-v0.40.1", "ollama.exe"));
             checks["frontend_build"] = File.Exists(frontend);
+            checks["member2_visual_studio"] = File.Exists(Path.Combine(options.Workspace, "member2", "backend", "startupforge_member2", "visual_studio.py"));
+            checks["member3_reports"] = File.Exists(Path.Combine(options.Workspace, "member3", "backend", "startupforge_member3", "reports.py"));
+            checks["member3_workspace"] = File.Exists(Path.Combine(options.Workspace, "member3", "backend", "startupforge_member3", "core", "router.py"));
             List<string> missing = new List<string>();
             foreach (KeyValuePair<string, object> check in checks)
                 if (!(bool)check.Value) missing.Add(check.Key);
@@ -206,7 +209,7 @@ namespace StartupForge.Launcher
         {
             if (!PortInUse(port)) return;
             if (!IsExpectedService(ReadJson(address), app))
-                throw new InvalidOperationException("Port " + port + " is already occupied by a service that is not " + (app ? "StartupForge" : "Ollama") + ". Close that service or change its port before launching StartupForge. The launcher has left it running.");
+                throw new InvalidOperationException("Port " + port + " is already occupied by a service that is not a complete " + (app ? "StartupForge workspace" : "Ollama") + ". Close that service or change its port before launching StartupForge. The launcher has left it running.");
             Log("Reusing " + (app ? "StartupForge" : "Ollama") + " on port " + port + ".");
         }
 
@@ -259,9 +262,15 @@ namespace StartupForge.Launcher
             if (!body.TryGetValue("modules", out value)) return false;
             object[] modules = value as object[];
             if (modules == null) return false;
-            foreach (object module in modules)
-                if (string.Equals(module as string, "intelligence", StringComparison.Ordinal)) return true;
-            return false;
+            string[] requiredModules = { "intelligence", "visual_studio", "reports", "workspace" };
+            foreach (string required in requiredModules)
+            {
+                bool found = false;
+                foreach (object module in modules)
+                    if (string.Equals(module as string, required, StringComparison.Ordinal)) { found = true; break; }
+                if (!found) return false;
+            }
+            return true;
         }
 
         private static bool IsFrontendReady()

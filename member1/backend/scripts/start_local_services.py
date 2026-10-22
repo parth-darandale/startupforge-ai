@@ -145,8 +145,9 @@ def start():
         spawn_background([str(runtime), "serve"], "ollama", environment)
         wait_until("http://127.0.0.1:11434/api/version")
     health = ready("http://127.0.0.1:8000/api/v1/health")
-    if port_open(8000) and (not isinstance(health, dict) or "intelligence" not in health.get("modules", [])):
-        raise RuntimeError("Port 8000 is serving another application; preserve it and choose another port.")
+    required_modules = {"intelligence", "visual_studio", "reports", "workspace"}
+    if port_open(8000) and (not isinstance(health, dict) or not required_modules.issubset(set(health.get("modules", [])))):
+        raise RuntimeError("Port 8000 is serving another application or an incomplete StartupForge build; preserve it and choose another port.")
     if not health:
         spawn_background([python, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"], "api")
         wait_until("http://127.0.0.1:8000/api/v1/health")

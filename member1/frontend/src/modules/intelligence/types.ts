@@ -168,7 +168,7 @@ export interface Job {
   job_id: string
   operation: string
   project_id: string
-  status: 'queued' | 'running' | 'succeeded' | 'failed'
+  status: 'queued' | 'running' | 'succeeded' | 'partial_success' | 'failed'
   stage: string
   progress: number
   created_at: string

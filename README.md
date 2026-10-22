@@ -1,8 +1,8 @@
-# StartupForge AI — Member 1
+# StartupForge AI — Integrated Application
 
-This repository contains the StartupForge AI implementation. Run the commands in this file from the repository root, which corresponds to the `implementation` folder in the original capstone workspace. Original synopsis and review documents are kept separately from this repository.
+This repository contains the complete StartupForge AI implementation. Run the commands in this file from the repository root, which corresponds to the `implementation` folder in the original capstone workspace. Original synopsis and review documents are kept separately from this repository.
 
-Member 1 is runnable independently. It structures a startup idea, retrieves evidence, produces an analysis with a separate critic and one revision, and opens a debate room. You can argue for or against the idea, or watch Pro and Skeptic agents respond to each other. Statistics are exact quotations linked to source passages; there are no charts.
+The integrated app structures an idea, retrieves evidence, produces a reviewed analysis, and opens a debate room. It also creates a source-linked pitch deck, poster text and formal report from an immutable saved context. You can argue for or against an idea, or watch Pro and Skeptic agents respond to each other. Statistics stay linked to quoted evidence; unsupported demand, market size and pricing remain open gaps.
 
 The app supports **live local AI without an API key**, using Qwen3-4B-Instruct-2507 through Ollama. Its model shortlist contains only **Qwen3 4B Instruct 2507** (default) and **Fin-R1** (claim-revision alternative). Read the [two-model comparison](integration/model_trials/RESULTS.md). Web research fetches full public HTML pages and bounded text-based PDF passages. These are small workflow checks, not a guarantee of business accuracy. A fresh checkout defaults to offline demo mode; demo sources and statistics are labelled synthetic. Local environments, model weights, credentials, project databases and generated frontend assets are excluded from Git.
 
@@ -10,7 +10,7 @@ A [one-page comparison PDF](output/pdf/StartupForge_AI_Top_Two_Models.pdf) is re
 
 ## Set up a fresh checkout
 
-Use Python 3.10+ and Node 22.12+ (or Node 24). The working code lives in [member1](member1/README.md); [member2](member2/README.md) and [member3](member3/README.md) are placeholders. Read the [folder layout](integration/FOLDER_STRUCTURE.md).
+Use Python 3.10+ and Node 22.12+ (or Node 24). The app runs through [Member 1's intelligence host](member1/README.md), [Member 2's pitch and visual studio](member2/README.md), and [Member 3's report and workspace module](member3/README.md). Read the [folder layout](integration/FOLDER_STRUCTURE.md).
 
 From the repository root, create the Python environment, install dependencies, copy the example configuration and build the frontend. The credential-free demo runs directly through Uvicorn and requires no Ollama runtime or model downloads:
 
@@ -46,8 +46,9 @@ The launcher starts the workspace's Ollama runtime and one API worker in the bac
 1. Enter an idea, structure it, and correct the extracted fields. Original input is preserved.
 2. Research the idea. Optionally enter public report/article URLs to fetch those pages directly. Inspect the reviewed analysis, source excerpts, statistics, critic and initial analysis.
 3. Choose **You vs. AI** and your stance, or **Pro vs. Skeptic**. The AI takes the opposite stance in a user debate. A bounded number of rounds ends in a moderator summary.
-4. Save the reviewed context and download its JSON for teammates. Debate arguments remain a separate transcript; they do not silently change the reviewed findings.
-5. Reopen a recent project to recover its context and completed research.
+4. Save the reviewed context. Debate arguments remain a separate transcript; they do not silently change the reviewed findings.
+5. Generate a pitch deck, poster brief or report from that saved context. Edit content, save a new revision, render it and download the file.
+6. Open Project workspace to reopen projects and find earlier context versions and generated files.
 
 ## Configure real models and research
 
@@ -103,19 +104,19 @@ Crossref remains selectable for scholarly abstracts using its [public API](https
 
 Default retrieval is a transparent keyword baseline. Live web sources and passages must match the reviewed solution’s topic; region, audience or generic business words alone cannot qualify them. Figure cards preserve literal ranges and include measurement-period, geography, forecast and source caveats when available. The UI also accepts a market region. For semantic embeddings install `member1/backend/requirements-semantic.txt` and set `RETRIEVAL_PROVIDER=fastembed`. The first run may download the configured embedding model; see [FastEmbed](https://qdrant.github.io/fastembed/). Provider errors are returned as failed jobs. Live mode never silently switches to demonstration data.
 
-## Integration at the end
+## The three modules
 
-The feature lives in `member1/backend/app/modules/intelligence` and `member1/frontend/src/modules/intelligence`. Its project/job/storage harness lives separately in `member1/backend/app/harness`.
+All three modules now run in the same FastAPI app and React workspace. Save a reviewed context in Idea Intelligence, then open **Pitch and poster** or **Reports** to generate, edit and download outputs. **Project workspace** lists saved versions and files and can start a combined run that researches one idea and launches the requested outputs together.
 
-Member 2 and Member 3 can develop against `integration/fixtures/project_context.demo.json` and the JSON schemas without running this module. At final assembly, Member 3 mounts the feature router and supplies repository/job adapters, then mounts the exported React component. Member 2 receives the committed context snapshot for presentation generation; Member 3 uses the same snapshot for report generation.
+Member 2 creates a cited PPTX and a TXT poster brief. Member 3 creates DOCX/PDF reports and owns the project, job, artifact revision and download APIs. The outputs preserve the selected context version and hash; editing content creates a new revision and rendering creates a separate file.
 
-Read [the teammate connection endpoints and adapters](integration/MODULE_CONNECTIONS.md), [the complete API and integration contract](integration/MEMBER1_CONTRACT.md) and [frontend mounting instructions](member1/frontend/README.md). The existing three-member division remains in `IMPLEMENTATION_PLAN.md`.
+See [the integrated API and data flow](integration/MODULE_CONNECTIONS.md), [Member 2's module](member2/README.md), [Member 3's workspace](member3/README.md), and the original [three-member implementation plan](IMPLEMENTATION_PLAN.md).
 
 ## Checks and practical limits
 
 Latest verification on 9 October 2026: **484 backend tests passed in 28.02 seconds**, and the frontend production build passed. Earlier on 9 October, 475 backend tests passed before the review-handling regression coverage was added, and the compiled `StartupForge.exe --headless` started the configured local workspace successfully. Backend verification includes teammate connector contracts, transient Windows status-file locks, required extraction proof fields, pronoun-only solution fallbacks, numerical assertions in revised claims, bounded model output instructions, public-page extraction, quotation provenance, URL/redirect/DNS checks, bounded HTML/PDF downloads, robots rules and web research diagnostics. Read the [live workflow summary](integration/web_trials/README.md); raw project exports and machine-specific diagnostics are kept local. The two-model comparison retains its synthetic trial outputs. An earlier direct live two-page fetch/retrieval check produced five exactly quoted figures; they are education background, not validation of the textbook market.
 
-The verified automatic Qwen workflow completed in **99.84 seconds**, with no supplied URLs, manual extraction corrections or fixture evidence. It retained one news publication, two passages and thirteen quoted statistic cards, saved context version 1 with `ready_with_gaps`, verified the exact teammate handoff, received honest `503 MODULE_NOT_AVAILABLE` responses from both unfinished generators, and completed a one-round user-versus-AI debate with a moderator summary. These figures concern rooftop-solar financing and capacity, including household programmes and historical funding; they do not establish the factory-owner quote-comparison service's market size or demand. The tested runtime reported all 37 model layers on the GPU with Flash Attention and Q8 cache. See the [verification summary](integration/qa/MEMBER1_UPGRADE_VERIFICATION.md). Raw workflow exports, earlier failed attempts and screenshots remain in the local development workspace.
+The verified automatic Qwen workflow completed in **99.84 seconds**, with no supplied URLs, manual extraction corrections or fixture evidence. It retained one news publication, two passages and thirteen quoted statistic cards, saved context version 1 with `ready_with_gaps`, and completed a one-round user-versus-AI debate with a moderator summary. At that earlier check, both output modules were still placeholders; the current app now generates pitch, poster and report files through the integrated routes. The solar figures do not establish the factory-owner quote-comparison service's market size or demand. See the [verification summary](integration/qa/MEMBER1_UPGRADE_VERIFICATION.md). Raw workflow exports and screenshots remain in the local development workspace.
 
 An earlier supplied-URL live workflow fetched two public pages, selected six passages, produced eighteen quoted figures and saved context version 1 after real Qwen analysis, criticism and revision. This historical run completed in about 146 seconds and retained `ready_with_gaps`; Indian textbook-market demand and pricing remain unvalidated. See the [live workflow summary](integration/web_trials/README.md) and [web research tools and data flow](integration/WEB_RESEARCH.md).
 

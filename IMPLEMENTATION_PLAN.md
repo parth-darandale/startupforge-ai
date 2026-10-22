@@ -5,6 +5,10 @@ Three independent app modules | Team size 3 | 7 October 2026
 
 The team will research, implement, and verify three app modules in parallel. Operational integration happens only after all three modules finish development. Before coding, the team agrees on data schemas, API contracts, and test fixtures so that the finished modules can connect without redesign.
 
+### Implementation status — 22 October 2026
+
+The three modules are now mounted in one FastAPI app and one React workspace. Member 1 provides the idea intelligence workflow. Member 2 generates editable pitch-deck/poster content and PPTX/TXT files. Member 3 provides report content and DOCX/PDF files, shared project/context/job storage, versioned artifact edits, rendering, downloads, and the combined run endpoint. See `integration/MODULE_CONNECTIONS.md` for the implemented routes and data flow.
+
 ### Module ownership
 
 | Member | App module | Complete feature ownership |
@@ -25,9 +29,9 @@ Each member owns the frontend feature, backend routes and services, prompts, mod
 
 ### Minimum deliverables
 
-A reviewed, evidence-supported project context; pitch deck content and a usable PPTX; downloadable poster content; a formal DOCX report; and a workspace that saves projects and provides downloads. PDF report export and fully rendered poster graphics may be added through the same export interfaces after their dependencies are available.
+A reviewed, evidence-supported project context; editable pitch deck and poster content with usable PPTX/TXT exports; a formal report with DOCX/PDF exports; and a workspace that saves projects and provides downloads. Fully rendered poster graphics remain an optional future export.
 
-The final application uses one frontend and one FastAPI backend. The API catalogue in this document defines 26 application endpoints under `/api/v1`. Internal search, embedding, retrieval, and critic functions remain implementation details inside their owning module.
+The final application uses one frontend and one FastAPI backend. The API catalogue in this document defines the application routes under `/api/v1`. Internal search, embedding, retrieval, and critic functions remain implementation details inside their owning module.
 
 <!-- pagebreak -->
 ## 1 Module research and implementation

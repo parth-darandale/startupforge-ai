@@ -11,6 +11,8 @@ dist/
 member1/backend/data/
 member1/backend/.runtime/
 member1/backend/models/
+member2/backend/data/
+member3/backend/data/
 launcher/.runtime/
 *.log
 tmp/

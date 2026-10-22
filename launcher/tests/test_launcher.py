@@ -34,6 +34,15 @@ class LauncherTests(unittest.TestCase):
         frontend = member / "frontend/dist/index.html"
         frontend.parent.mkdir(parents=True, exist_ok=True)
         frontend.write_text("<!doctype html><title>fixture</title>", encoding="utf-8")
+        modules = {
+            "member2/backend/startupforge_member2/visual_studio.py",
+            "member3/backend/startupforge_member3/reports.py",
+            "member3/backend/startupforge_member3/core/router.py",
+        }
+        for relative in modules:
+            path = workspace / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
         return backend
 
     def test_missing_environment_is_reported_without_starting_services(self):

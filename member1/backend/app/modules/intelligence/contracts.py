@@ -255,7 +255,7 @@ class Job(Contract):
     job_id: str
     operation: str
     project_id: str
-    status: Literal["queued", "running", "succeeded", "failed"] = "queued"
+    status: Literal["queued", "running", "succeeded", "partial_success", "failed"] = "queued"
     stage: str = "queued"
     progress: int = Field(default=0, ge=0, le=100)
     created_at: datetime = Field(default_factory=utc_now)
