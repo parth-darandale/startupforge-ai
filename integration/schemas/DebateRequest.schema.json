@@ -29,11 +29,25 @@
       "type": "string"
     },
     "max_rounds": {
-      "default": 3,
-      "maximum": 5,
+      "default": 10,
+      "maximum": 100,
       "minimum": 1,
       "title": "Max Rounds",
       "type": "integer"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
     }
   },
   "required": [

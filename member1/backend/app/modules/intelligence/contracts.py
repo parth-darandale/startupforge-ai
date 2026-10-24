@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 
 def utc_now() -> datetime:
@@ -100,6 +100,14 @@ class ExecutionInfo(Contract):
     search_provider: str
     retrieval_method: str
     revision_passes: int = Field(default=0, ge=0, le=1)
+    model_id: str | None = None
+
+    @model_serializer(mode="wrap")
+    def preserve_legacy_hash(self, handler):
+        payload = handler(self)
+        if self.model_id is None:
+            payload.pop("model_id", None)
+        return payload
 
 
 class ContextDraft(Contract):
@@ -178,12 +186,14 @@ class ResearchOptions(Contract):
 class ExtractionRequest(Contract):
     project_id: str = Field(min_length=1, max_length=100)
     idea_text: str = Field(min_length=10, max_length=12000)
+    model_id: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class AnalysisRequest(Contract):
     project_id: str = Field(min_length=1, max_length=100)
     idea: IdeaSpec
     research_options: ResearchOptions = Field(default_factory=ResearchOptions)
+    model_id: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class AnalysisResult(Contract):
@@ -194,11 +204,14 @@ class AnalysisResult(Contract):
     warnings: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
     figures: list[SourcedFigure] = Field(default_factory=list)
+    model_id: str | None = None
 
     @model_validator(mode="after")
     def matching_figures(self) -> "AnalysisResult":
         if self.figures != self.context_draft.figures:
             raise ValueError("Analysis figures must match the context draft")
+        if self.model_id and self.context_draft.execution.model_id and self.model_id != self.context_draft.execution.model_id:
+            raise ValueError("Analysis model must match its execution metadata")
         return self
 
 
@@ -207,7 +220,8 @@ class DebateRequest(Contract):
     analysis_id: str
     mode: Literal["user_vs_agent", "agent_vs_agent"]
     user_stance: Literal["for", "against"] = "for"
-    max_rounds: int = Field(default=3, ge=1, le=5)
+    max_rounds: int = Field(default=10, ge=1, le=100, strict=True)
+    model_id: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class DebateTurnRequest(Contract):
@@ -232,10 +246,13 @@ class DebateSession(Contract):
     analysis_id: str
     mode: Literal["user_vs_agent", "agent_vs_agent"]
     user_stance: Literal["for", "against"]
-    max_rounds: int = Field(ge=1, le=5)
+    max_rounds: int = Field(ge=1, le=100, strict=True)
     status: Literal["active", "completed", "failed"] = "active"
     turns: list[DebateTurn] = Field(default_factory=list)
     summary: str | None = None
+    history_compacted: bool = False
+    history_note: str | None = None
+    model_id: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

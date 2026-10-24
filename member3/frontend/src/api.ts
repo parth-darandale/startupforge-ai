@@ -91,8 +91,8 @@ export class WorkspaceApi {
       headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ content_revision: revision, formats }) })
   }
 
-  async poll(receipt: JobReceipt, onProgress: (job: Job) => void): Promise<Job> {
-    const end = Date.now() + 120_000
+  async poll(receipt: JobReceipt, onProgress: (job: Job) => void, timeoutMs = 15 * 60_000): Promise<Job> {
+    const end = Date.now() + timeoutMs
     while (Date.now() < end) {
       const job = await this.job(receipt.status_url)
       onProgress(job)

@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime, timezone
 
 import pytest
 
@@ -79,6 +80,24 @@ async def test_web_diagnostics_reach_analysis_context_and_saved_gaps():
     assert "Skipped publication: PAGE_ACCESS_DENIED." in result.warnings
     assert "Requested publication could not be fetched." in result.context_draft.final_analysis.gaps
     assert result.context_draft.execution.search_provider == "web"
+
+
+@pytest.mark.asyncio
+async def test_critic_receives_source_metadata_and_current_date_for_date_checks():
+    class CapturingCritic(RecordingDemo):
+        review_payload = None
+
+        async def generate_json(self, task, payload, schema):
+            if task == "critic":
+                self.review_payload = payload
+            return await super().generate_json(task, payload, schema)
+
+    llm = CapturingCritic()
+    service = make_service(llm=llm)
+    await service.analyze("project_date_check", await make_idea(service), ResearchOptions())
+
+    assert llm.review_payload["as_of_date"] == datetime.now(timezone.utc).date().isoformat()
+    assert llm.review_payload["sources"][0]["title"] == "Synthetic validation teaching fixture"
 
 
 @pytest.mark.asyncio

@@ -87,7 +87,7 @@ export function ResearchView({ context }: { context: ContextDraft }) {
 export function CriticView({ context }: { context: ContextDraft }) {
   const critic = context.critic
   return <div className="sf-critic">
-    <div className="sf-report-summary"><h3>{critic.review_status.replaceAll('_', ' ')}</h3><p>{critic.revision_summary || 'Review complete.'}</p></div>
+    <div className="sf-report-summary"><h3>{critic.review_status === 'ready' ? 'ready' : 'ready with gaps'}</h3><p>{critic.revision_summary || 'Review complete.'}</p></div>
     {critic.issues.length === 0 && <p className="sf-muted">No issues recorded.</p>}
     {critic.issues.map((issue) => <article className="sf-critic-issue" key={issue.issue_id}>
       <span className={`sf-claim-type sf-severity-${issue.severity}`}>{issue.severity} priority</span>

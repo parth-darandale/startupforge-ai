@@ -12,9 +12,11 @@ POST /api/v1/studio/pitch-decks
 POST /api/v1/studio/posters
 ```
 
-Generation requires `Idempotency-Key` and a complete committed context. Template IDs and option bounds are returned by the template route. Pitch decks support 5–12 slides, three tones and PPTX. Poster output supports TXT. Both return a normal job receipt; poll its `status_url`, then read the artifact manifest and download the registered file.
+Generation requires `Idempotency-Key` and a complete committed context. Template IDs and option bounds are returned by the template route. Pitch decks default to 10 slides and support 5–12 slides, three tones and PPTX. The themed deck uses larger type and concise points covering the customer problem, product, market, business model, pilot, scorecard and decisions. Proposed actions carry a PLAN label, while reviewed findings keep their original wording and references. Dense lists use two columns, all saved body blocks render, and PowerPoint speaker notes retain source URLs and supplied notes. The source slide uses compact clickable references. Open market questions remain explicit rather than receiving invented figures. Poster output supports TXT. Both return a normal job receipt; poll its `status_url`, then read the artifact manifest and download the registered file.
 
 The module uses the shared Python environment and dependencies from `member1/backend/requirements.txt`. It needs `python-pptx` for PowerPoint rendering. The frontend is mounted in the integrated app at **Pitch and poster**.
+
+An optional **Slide generator** selector also offers the locally installed AutoPresent Llama 3.1 8B slide model. It generates layout programs that are statically translated to editable objects; saved project text is bound afterwards, so generated wording cannot replace evidence or introduce figures. The standard generator remains the default. Setup, model provenance and runtime details are in [SLIDE_GENERATION.md](../integration/SLIDE_GENERATION.md).
 
 Run the integrated app from the implementation root after setup:
 

@@ -78,6 +78,7 @@ export interface ContextDraft {
   warnings: string[]
   execution: {
     mode: 'demo' | 'live'
+    model_id?: string | null
     llm_provider: string
     search_provider: string
     retrieval_method: string
@@ -95,6 +96,7 @@ export interface ProjectContext extends ContextDraft {
 
 export interface AnalysisResult {
   analysis_id: string
+  model_id?: string | null
   project_id: string
   context_draft: ContextDraft
   stages: string[]
@@ -127,6 +129,7 @@ export interface DebateTurn {
 
 export interface DebateSession {
   debate_id: string
+  model_id?: string | null
   project_id: string
   analysis_id: string
   mode: 'user_vs_agent' | 'agent_vs_agent'
@@ -135,6 +138,8 @@ export interface DebateSession {
   status: 'active' | 'completed' | 'failed'
   turns: DebateTurn[]
   summary: string | null
+  history_compacted?: boolean
+  history_note?: string | null
   created_at: string
   updated_at: string
 }
@@ -143,6 +148,7 @@ export interface Project {
   project_id: string
   display_name: string
   draft_idea_text: string
+  draft_idea?: IdeaSpec | null
   revision: number
   latest_context_version: number
   created_at: string
@@ -185,4 +191,19 @@ export interface Health {
   providers?: Record<string, unknown>
   capabilities?: { debate: boolean; live_configured: boolean }
   configuration_message?: string | null
+}
+
+export interface ModelOption {
+  model_id: string
+  label: string
+  description: string
+  available: boolean
+  experimental: boolean
+  unavailable_reason?: string | null
+}
+
+export interface ModelCatalog {
+  default_model_id: string | null
+  mode: 'live' | 'demo'
+  models: ModelOption[]
 }

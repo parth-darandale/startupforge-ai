@@ -1,0 +1,6 @@
+# Download/bootstrap dependencies live in the isolated conversion environment.
+# Keep huggingface-hub compatible with the converter's transformers 4.57.x.
+huggingface-hub==0.36.2
+hf-xet==1.7.0
+tqdm==4.70.1
+httpx==0.28.1

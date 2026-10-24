@@ -25,6 +25,44 @@ async def project(client):
     return response.json()
 
 
+async def test_project_draft_fields_are_saved_and_restored(client):
+    item = await project(client)
+    idea = {
+        "original_text": IDEA,
+        "project_name": "FoodLoop",
+        "problem": "Local shops have leftover food they cannot sell.",
+        "solution": "Connect shops with nearby customers to offer leftover food.",
+        "target_users": ["Local shops", "Nearby customers"],
+        "domain": "Food services",
+        "assumptions": ["Customers will buy discounted food."],
+        "constraints": ["Begin in one neighborhood."],
+        "field_origins": {"problem": "provided", "solution": "provided", "target_users": "provided"},
+    }
+    saved = await client.patch(f"/api/v1/projects/{item['project_id']}",
+                               json={"expected_revision": item["revision"], "draft_idea": idea})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["draft_idea"] == idea
+    assert saved.json()["revision"] == item["revision"] + 1
+    reopened = await client.get(f"/api/v1/projects/{item['project_id']}")
+    assert reopened.json()["draft_idea"] == idea
+
+
+async def test_project_draft_fields_patch_obeys_revision_guard(client):
+    item = await project(client)
+    saved = await client.patch(f"/api/v1/projects/{item['project_id']}", json={
+        "expected_revision": item["revision"],
+        "draft_idea": {"original_text": IDEA, "project_name": "FoodLoop", "problem": "Problem",
+                       "solution": "Solution", "domain": "Food", "target_users": [],
+                       "assumptions": [], "constraints": [], "field_origins": {}},
+    })
+    assert saved.status_code == 200
+    stale = await client.patch(f"/api/v1/projects/{item['project_id']}", json={
+        "expected_revision": item["revision"], "display_name": "Stale update",
+    })
+    assert stale.status_code == 409
+    assert stale.json()["error"]["code"] == "PROJECT_REVISION_CONFLICT"
+
+
 async def submit(client, url, body, key="request-1"):
     response = await client.post(url, json=body, headers={"Idempotency-Key": key})
     assert response.status_code == 202, response.text

@@ -35,3 +35,9 @@ integration/model_trials/*.json
 !integration/model_trials/fin_r1.json
 !integration/model_trials/prompt_protocol_v1.json
 integration/model_trials/ALL_TRIALS.md
+
+# Local generated examples and presentation review files.
+/.codex-pitch-build/
+/output/quality_review/
+/output/pdf/CampusLoop_Feasibility_Brief.pdf
+/output/pdf/CampusMeals_Validation_Pitch.pdf

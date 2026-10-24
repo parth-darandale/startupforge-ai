@@ -21,6 +21,7 @@ from bs4 import BeautifulSoup
 
 from .contracts import ResearchDocument, ResearchOptions, Source
 from .errors import IntelligenceError
+from .local_model_lock import local_model_lock
 from .settings import BACKEND_ROOT, Settings
 
 MAX_QUERIES = 6
@@ -293,10 +294,11 @@ class OllamaLanguageModel:
         # configuration explicitly selects a value supported by /api/show.
         if self.settings.ollama_think is not None:
             body["think"] = self.settings.ollama_think
-        async with httpx.AsyncClient(
-            timeout=self.settings.provider_timeout, transport=self.transport, follow_redirects=False
-        ) as client:
-            data = await _request_json(client, self.name, "POST", self.url, json=body)
+        async with local_model_lock():
+            async with httpx.AsyncClient(
+                timeout=self.settings.provider_timeout, transport=self.transport, follow_redirects=False
+            ) as client:
+                data = await _request_json(client, self.name, "POST", self.url, json=body)
         if data.get("error"):
             raise IntelligenceError("PROVIDER_REQUEST_REJECTED", "Ollama could not run the configured model.")
         if data.get("done") is False:

@@ -1,6 +1,6 @@
 import type {
   AnalysisResult, ContextDraft, DebateSession, ErrorInfo, Health, IdeaSpec, Job, JobReceipt,
-  Project, ProjectContext, ResearchOptions,
+  ModelCatalog, Project, ProjectContext, ResearchOptions,
 } from './types'
 
 export class ApiError extends Error {
@@ -46,6 +46,7 @@ export class IntelligenceApi {
   }
 
   health(signal?: AbortSignal) { return this.request<Health>('health', { signal }) }
+  models(signal?: AbortSignal) { return this.request<ModelCatalog>('intelligence/models', { signal }) }
   projects(signal?: AbortSignal) {
     return this.request<{ items: Project[]; next_cursor: string | null }>('projects?limit=100', { signal })
   }
@@ -55,35 +56,48 @@ export class IntelligenceApi {
   context(id: string, signal?: AbortSignal) {
     return this.request<ProjectContext>(`projects/${encodeURIComponent(id)}/context`, { signal })
   }
-  projectJobs(id: string, signal?: AbortSignal) {
-    return this.request<{ jobs: Job[]; next_cursor: string | null }>(`projects/${encodeURIComponent(id)}/jobs`, { signal })
+  projectJobs(id: string, signal?: AbortSignal, operation?: string, debateId?: string) {
+    const query = new URLSearchParams()
+    if (operation) query.set('operation', operation)
+    if (debateId) query.set('debate_id', debateId)
+    return this.request<{ jobs: Job[]; next_cursor: string | null }>(`projects/${encodeURIComponent(id)}/jobs?${query}`, { signal })
   }
   createProject(displayName: string, ideaText: string, signal?: AbortSignal) {
     return this.request<Project>('projects', {
       method: 'POST', body: JSON.stringify({ display_name: displayName, idea_text: ideaText }), signal,
     })
   }
-  extract(projectId: string, ideaText: string, signal?: AbortSignal) {
-    return this.request<JobReceipt>('intelligence/extractions', {
-      method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ project_id: projectId, idea_text: ideaText }), signal,
+  updateProject(project: Project, changes: Partial<Pick<Project, 'display_name' | 'draft_idea_text' | 'draft_idea'>>, signal?: AbortSignal) {
+    return this.request<Project>(`projects/${encodeURIComponent(project.project_id)}`, {
+      method: 'PATCH', body: JSON.stringify({ expected_revision: project.revision, ...changes }), signal,
     })
   }
-  analyze(projectId: string, idea: IdeaSpec, maxSources: number, signal?: AbortSignal, sourceUrls: string[] = [], region = '') {
+  extract(projectId: string, ideaText: string, signal?: AbortSignal, modelId?: string | null) {
+    return this.request<JobReceipt>('intelligence/extractions', {
+      method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: JSON.stringify({ project_id: projectId, idea_text: ideaText, model_id: modelId }), signal,
+    })
+  }
+  analyze(projectId: string, idea: IdeaSpec, maxSources: number, signal?: AbortSignal, sourceUrls: string[] = [], region = '', modelId?: string | null) {
     const researchOptions: ResearchOptions = { max_sources: maxSources, language: 'en', region: region.trim() || null }
     if (sourceUrls.length) researchOptions.source_urls = sourceUrls
     return this.request<JobReceipt>('intelligence/analyses', {
       method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ project_id: projectId, idea, research_options: researchOptions }),
+      body: JSON.stringify({ project_id: projectId, idea, research_options: researchOptions, model_id: modelId }),
       signal,
     })
   }
   analysis(path: string, signal?: AbortSignal) { return this.request<AnalysisResult>(path, { signal }) }
   debate(path: string, signal?: AbortSignal) { return this.request<DebateSession>(path, { signal }) }
-  startDebate(projectId: string, analysisId: string, mode: DebateSession['mode'], userStance: DebateSession['user_stance'], maxRounds: number, signal?: AbortSignal) {
+  startDebate(projectId: string, analysisId: string, mode: DebateSession['mode'], userStance: DebateSession['user_stance'], maxRounds: number, signal?: AbortSignal, modelId?: string | null) {
     return this.request<JobReceipt>('intelligence/debates', {
       method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ project_id: projectId, analysis_id: analysisId, mode, user_stance: userStance, max_rounds: maxRounds }), signal,
+      body: JSON.stringify({ project_id: projectId, analysis_id: analysisId, mode, user_stance: userStance, max_rounds: maxRounds, model_id: modelId }), signal,
+    })
+  }
+  resumeDebate(debateId: string, signal?: AbortSignal) {
+    return this.request<JobReceipt>(`intelligence/debates/${encodeURIComponent(debateId)}/resume`, {
+      method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, signal,
     })
   }
   sendTurn(debateId: string, message: string, signal?: AbortSignal) {
@@ -98,9 +112,9 @@ export class IntelligenceApi {
     })
   }
 
-  async poll(receipt: JobReceipt, signal: AbortSignal, onUpdate: (job: Job) => void | Promise<void>): Promise<Job> {
-    const deadline = Date.now() + 600_000
-    for (let attempt = 0; attempt < 600 && Date.now() < deadline; attempt++) {
+  async poll(receipt: JobReceipt, signal: AbortSignal, onUpdate: (job: Job) => void | Promise<void>, options?: { timeoutMs: number }): Promise<Job> {
+    const deadline = Date.now() + (options?.timeoutMs ?? 600_000)
+    while (Date.now() < deadline) {
       signal.throwIfAborted()
       const job = await this.request<Job>(receipt.status_url, { signal })
       await onUpdate(job)

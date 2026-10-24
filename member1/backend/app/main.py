@@ -1,5 +1,6 @@
 """Integrated StartupForge host with shared workspace and three feature modules."""
 from contextlib import asynccontextmanager
+import asyncio
 import re
 import sys
 import uuid
@@ -17,8 +18,11 @@ from .integration.router import build_integration_router
 from .modules.intelligence.debate import DebateService
 from .modules.intelligence.errors import IntelligenceError
 from .modules.intelligence.pipeline import build_service
+from .modules.intelligence.output_author import OutputAuthor
+from .modules.intelligence.autopresent_runtime import AutoPresentRuntime
 from .modules.intelligence.router import IntelligenceDependencies, build_router
 from .modules.intelligence.settings import BACKEND_ROOT, Settings
+from .local_shutdown import LocalShutdownController, validate_local_request
 
 
 IMPLEMENTATION_ROOT = BACKEND_ROOT.parents[1]
@@ -35,7 +39,7 @@ from startupforge_member3.reports import ReportsAdapter
 
 
 def create_app(settings: Settings | None = None, *, integration_adapters: IntegrationAdapters | None = None,
-               artifact_storage_root: str | Path | None = None) -> FastAPI:
+               artifact_storage_root: str | Path | None = None, shutdown_controller=None) -> FastAPI:
     config = settings or Settings.from_env()
     path = Path(config.database_path)
     if not path.is_absolute():
@@ -44,8 +48,10 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
     runner = LocalJobRunner(store)
     artifacts = ArtifactStore(path, artifact_storage_root or
                               IMPLEMENTATION_ROOT / "member3" / "backend" / "data" / "files")
+    output_author = OutputAuthor(config)
     modules = integration_adapters or IntegrationAdapters(
-        visual_studio=VisualStudioAdapter(artifacts), reports=ReportsAdapter(artifacts))
+        visual_studio=VisualStudioAdapter(artifacts, output_author, AutoPresentRuntime(config)),
+        reports=ReportsAdapter(artifacts, output_author))
     configuration_error = None
     try:
         service = build_service(config)
@@ -72,13 +78,18 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
     app.state.runner = runner
     app.state.integration = connections
     app.state.artifacts = artifacts
+    app.state.shutting_down = False
+    shutdown = shutdown_controller or LocalShutdownController(BACKEND_ROOT)
+    shutdown_lock = asyncio.Lock()
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-                       allow_methods=["GET", "POST", "PUT", "PATCH"], allow_headers=["Content-Type", "Idempotency-Key", "X-Request-ID"])
+                       allow_methods=["GET", "POST", "PUT", "PATCH"], allow_headers=["Content-Type", "Idempotency-Key", "X-Request-ID", "X-StartupForge-Action"])
 
     @app.middleware("http")
     async def request_id(request: Request, call_next):
         supplied = request.headers.get("X-Request-ID", "")
         request.state.request_id = supplied if re.fullmatch(r"[A-Za-z0-9_-]{1,80}", supplied) else f"req_{uuid.uuid4().hex}"
+        if app.state.shutting_down and request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.url.path != "/api/v1/system/shutdown":
+            return JSONResponse(envelope(request, "APP_SHUTTING_DOWN", "StartupForge is shutting down."), status_code=503)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         return response
@@ -118,6 +129,21 @@ def create_app(settings: Settings | None = None, *, integration_adapters: Integr
                                  "reports": modules.reports is not None,
                                  "live_configured": config.app_mode == "live" and configuration_error is None},
                 "configuration_message": configuration_error.message if configuration_error else None}
+
+    @app.post("/api/v1/system/shutdown", tags=["Local application"])
+    async def shutdown_local_app(request: Request):
+        validate_local_request(request)
+        async with shutdown_lock:
+            if not app.state.shutting_down:
+                plan = await asyncio.to_thread(shutdown.prepare)
+                app.state.shutting_down = True
+                try:
+                    await runner.close()
+                    shutdown.start(plan)
+                except BaseException:
+                    app.state.shutting_down = False
+                    raise
+        return {"status": "shutting_down"}
 
     app.include_router(build_router(dependencies))
     app.include_router(build_integration_router(connections))

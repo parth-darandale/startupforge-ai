@@ -106,7 +106,7 @@ $result | Select-Object ProcessId, ReturnValue | ConvertTo-Json -Compress
 
 def ready(address):
     try:
-        response = httpx.get(address, timeout=2)
+        response = httpx.get(address, timeout=2, trust_env=False)
         response.raise_for_status()
         return response.json()
     except (httpx.HTTPError, ValueError):
@@ -121,11 +121,15 @@ def port_open(port):
         return False
 
 
-def wait_until(address):
-    deadline = time.monotonic() + 30
+def wait_until(address, *, timeout=30, service_name="Service", log_name=None):
+    deadline = time.monotonic() + timeout
     while not ready(address):
         if time.monotonic() > deadline:
-            raise RuntimeError("Service did not start; inspect backend/.runtime logs.")
+            logs = f"backend/.runtime/{log_name}-stderr.log" if log_name else "backend/.runtime logs"
+            raise RuntimeError(
+                f"{service_name} did not become ready within {timeout:g} seconds at {address}; "
+                f"inspect {logs}, then launch StartupForge again."
+            )
         time.sleep(0.5)
 
 
@@ -143,14 +147,15 @@ def start():
             "OLLAMA_MAX_LOADED_MODELS": "1", "OLLAMA_CONTEXT_LENGTH": "4096", "OLLAMA_NO_CLOUD": "1",
             "OLLAMA_FLASH_ATTENTION": "1", "OLLAMA_KV_CACHE_TYPE": "q8_0"}
         spawn_background([str(runtime), "serve"], "ollama", environment)
-        wait_until("http://127.0.0.1:11434/api/version")
+        # A cold GPU discovery pass can take more than 30 seconds on laptops.
+        wait_until("http://127.0.0.1:11434/api/version", timeout=90, service_name="Ollama", log_name="ollama")
     health = ready("http://127.0.0.1:8000/api/v1/health")
     required_modules = {"intelligence", "visual_studio", "reports", "workspace"}
     if port_open(8000) and (not isinstance(health, dict) or not required_modules.issubset(set(health.get("modules", [])))):
         raise RuntimeError("Port 8000 is serving another application or an incomplete StartupForge build; preserve it and choose another port.")
     if not health:
         spawn_background([python, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"], "api")
-        wait_until("http://127.0.0.1:8000/api/v1/health")
+        wait_until("http://127.0.0.1:8000/api/v1/health", timeout=45, service_name="StartupForge API", log_name="api")
     print("Open http://127.0.0.1:8000/", flush=True)
 
 

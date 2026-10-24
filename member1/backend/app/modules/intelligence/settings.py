@@ -44,6 +44,13 @@ class Settings:
     ollama_keep_alive: str = "5m"
     ollama_think: bool | None = None
     ollama_context_bytes_per_token: float = 3.0
+    output_llm_model: str = ""
+    output_num_predict: int = 3072
+    output_temperature: float = 0.5
+    output_timeout: float = 240.0
+    autopresent_base_url: str = "http://127.0.0.1:8091/v1"
+    autopresent_model: str = "startupforge-autopresent"
+    autopresent_timeout: float = 300.0
     search_provider: str = "wikipedia"
     tavily_api_key: str = ""
     web_discovery_provider: str = "ddgs"
@@ -73,6 +80,13 @@ class Settings:
             ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "5m"),
             ollama_think=_env_think(),
             ollama_context_bytes_per_token=_env_number("OLLAMA_CONTEXT_BYTES_PER_TOKEN", "3"),
+            output_llm_model=os.getenv("OUTPUT_LLM_MODEL", "").strip(),
+            output_num_predict=_env_number("OUTPUT_NUM_PREDICT", "3072", int),
+            output_temperature=_env_number("OUTPUT_TEMPERATURE", "0.5"),
+            output_timeout=_env_number("OUTPUT_TIMEOUT", "240"),
+            autopresent_base_url=os.getenv("AUTOPRESENT_BASE_URL", "http://127.0.0.1:8091/v1").rstrip("/"),
+            autopresent_model=os.getenv("AUTOPRESENT_MODEL", "startupforge-autopresent").strip(),
+            autopresent_timeout=_env_number("AUTOPRESENT_TIMEOUT", "300"),
             search_provider=os.getenv("SEARCH_PROVIDER", "wikipedia"),
             tavily_api_key=os.getenv("TAVILY_API_KEY", ""),
             web_discovery_provider=os.getenv("WEB_DISCOVERY_PROVIDER", "ddgs"),

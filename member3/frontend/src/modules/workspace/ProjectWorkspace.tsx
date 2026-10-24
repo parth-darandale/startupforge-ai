@@ -40,7 +40,7 @@ export function ProjectWorkspace({ onOpenStudio, onOpenReports }: { onOpenStudio
   }
   return <section className="sf-module-page">
     <div className="sf-module-heading"><div><span className="sf-eyebrow">MEMBER 3 · PROJECT WORKSPACE</span><h1>Saved projects and outputs</h1></div>
-      <label className="sf-project-select">Project<select value={selected} onChange={(event) => setSelected(event.target.value)}>
+      <label className="sf-project-select">Project<select disabled={busy} value={selected} onChange={(event) => setSelected(event.target.value)}>
         {projects.length === 0 && <option value="">No saved projects</option>}{projects.map((item) => <option key={item.project_id} value={item.project_id}>{item.display_name}</option>)}
       </select></label>
     </div>
@@ -53,7 +53,9 @@ export function ProjectWorkspace({ onOpenStudio, onOpenReports }: { onOpenStudio
       <article className="sf-module-card"><span className="sf-eyebrow">WORKFLOW</span><h2>Continue this project</h2>
         <p>Generate visual outputs or prepare the formal report from the latest saved context.</p>
         <div className="sf-workspace-actions"><button className="sf-secondary-button" onClick={onOpenStudio}>Pitch and poster</button><button className="sf-secondary-button" onClick={onOpenReports}>Reports</button></div>
-        <div className="sf-combined-options"><span>Run a new reviewed analysis and generate:</span>{byKind.map(([kind, label]) => <label key={kind}><input type="checkbox" checked={outputs.includes(kind)} onChange={(event) => setOutputs((current) => event.target.checked ? [...current, kind] : current.filter((item) => item !== kind))} /> {label}</label>)}</div>
+        <details className="sf-options"><summary>Choose outputs <span>{outputs.length} selected</span></summary>
+          <div className="sf-combined-options"><span>Run a new reviewed analysis and generate:</span>{byKind.map(([kind, label]) => <label key={kind}><input disabled={busy} type="checkbox" checked={outputs.includes(kind)} onChange={(event) => setOutputs((current) => event.target.checked ? [...current, kind] : current.filter((item) => item !== kind))} /> {label}</label>)}</div>
+        </details>
         <button className="sf-primary-button" disabled={busy || !outputs.length} onClick={runAll}>{busy ? 'Running…' : 'Run full workflow'}</button>
         {runStatus && <p className="sf-job-line">{runStatus}</p>}
       </article>

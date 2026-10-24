@@ -41,6 +41,8 @@ Default JSON results are `launcher/.runtime/check-result.json` or `launcher/.run
 
 The launcher rejects an occupied app or Ollama port if the responding service has an unexpected health payload. It never stops the listener. The existing Python launcher creates persistent services through Windows WMI, so closing the browser or launcher does not stop them. There is no scheduled task or Windows autostart entry.
 
+Use **Shutdown** at the top right of the app to stop the local API and its launcher-owned Ollama service, including model runners. Running jobs are interrupted; saved projects and files remain on disk. The app displays a shutdown screen. Double-click `StartupForge.exe` to start again. The local-only endpoint verifies browser origin and process identities; an unrelated or externally managed Ollama service is preserved.
+
 The workspace Ollama process uses one resident model/request, Flash Attention and a Q8 context cache to reduce memory use with the verified workflow's larger context. These overrides are scoped to the launched process; Windows user/system environment settings stay unchanged. An already-running daemon is reused with its existing settings. Changing these daemon options in `member1/backend/scripts/start_local_services.py` requires restarting the workspace daemon.
 
 To run the launcher's regression checks with the project's Python:

@@ -326,6 +326,18 @@
           "minimum": 0,
           "title": "Revision Passes",
           "type": "integer"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
         }
       },
       "required": [
@@ -550,6 +562,18 @@
       },
       "title": "Figures",
       "type": "array"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
     }
   },
   "required": [

@@ -32,8 +32,6 @@ def verify_context(context: ProjectContext, deps: IntegrationDependencies) -> Pr
     if context.model_dump(mode="json") != saved.model_dump(mode="json"):
         raise IntelligenceError("CONTEXT_SNAPSHOT_MISMATCH", "Supply the complete saved context without editing it.", 409,
                                 details={"project_id": context.project_id, "context_version": context.context_version})
-    if saved.critic.review_status == "blocked":
-        raise IntelligenceError("CONTEXT_BLOCKED", "Resolve the blocked review before generating outputs.", 422)
     return saved
 
 
@@ -129,7 +127,7 @@ def build_integration_router(deps: IntegrationDependencies) -> APIRouter:
         if saved.content_hash != context_digest(saved):
             raise IntelligenceError("STORED_CONTEXT_INVALID", "The saved context failed its integrity check.", 500)
         return ContextHandoff(context=saved, context_ref=ContextReference.from_context(saved),
-                              generation_eligible=saved.critic.review_status != "blocked", destinations=capabilities(deps))
+                              generation_eligible=True, destinations=capabilities(deps))
 
     @router.get("/studio/templates")
     async def studio_templates(kind: Literal["pitch_deck", "poster"] | None = Query(default=None)):

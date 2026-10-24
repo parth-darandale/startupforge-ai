@@ -21,3 +21,19 @@ frontend shell lives in
 
 For backend checks, run `.venv\Scripts\python.exe -m pytest -q` from `backend/`.
 For the frontend, run `npm run build` from `frontend/`.
+
+Debates accept a numeric length of 1–100 whole rounds (default 10). Each user
+round is a user argument plus an AI reply, following an opening argument; each
+automatic round is a Pro argument plus a Skeptic reply. The moderator summarizes
+after the requested final round. Long live debates retain the full transcript
+and use labelled older excerpts for model inputs while keeping recent exchanges
+and source evidence complete. The app discloses this compaction. These debates
+can take considerably longer than a research request; local context-limit
+errors remain explicit. See `../integration/MEMBER1_CONTRACT.md` for the
+endpoint, progress, failure and transcript details.
+
+The model receives a citation allowlist for each debate turn. A citation or
+response-validation error gets at most two correction retries, while invalid
+arguments never enter the transcript. Interrupted debates offer **Resume debate**
+and continue from the first missing argument with their original round count.
+If only the final summary failed, resuming regenerates the summary alone.

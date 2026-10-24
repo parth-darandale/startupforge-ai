@@ -8,6 +8,7 @@ contract. Live failures are surfaced; they never switch to demo mode.
 import asyncio
 import re
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -232,7 +233,8 @@ class IntelligenceService:
         await stage("critic", 75)
         review_payload = {
             "idea": payload["idea"], "initial_analysis": initial.model_dump(mode="json"),
-            "evidence": payload["evidence"], "gaps": gaps,
+            "evidence": payload["evidence"], "sources": payload["sources"], "gaps": gaps,
+            "as_of_date": datetime.now(timezone.utc).date().isoformat(),
         }
         critic: CritiqueReport = await self._generate("critic", review_payload, CritiqueReport)
         critic = self._normalize_critic(critic, initial, known_ids, warnings)
@@ -240,7 +242,7 @@ class IntelligenceService:
         self._merge_reference_issues(critic, initial, known_ids, live_evidence)
         revisions = 0
         final = initial.model_copy(deep=True)
-        if critic.issues or critic.review_status == "blocked":
+        if critic.issues:
             await stage("revision", 85)
             final = await self._generate("revise", {
                 **review_payload, "critic": critic.model_dump(mode="json"),
@@ -279,6 +281,7 @@ class IntelligenceService:
                     search_provider=getattr(self.search, "name", self.settings.search_provider),
                     retrieval_method=getattr(self.retriever, "method", self.settings.retrieval_provider),
                     revision_passes=revisions,
+                    model_id=(self.settings.llm_model or None) if self.settings.app_mode == "live" else None,
                 ),
             )
         except ValidationError as error:
@@ -288,6 +291,7 @@ class IntelligenceService:
         return AnalysisResult(
             analysis_id=f"analysis_{uuid4().hex}", project_id=project_id,
             context_draft=context, stages=stages, warnings=warnings,
+            model_id=(self.settings.llm_model or None) if self.settings.app_mode == "live" else None,
         )
 
     async def _research(self, queries: list[str], options: ResearchOptions,
@@ -366,6 +370,16 @@ class IntelligenceService:
             issue.evidence_ids = _unique(valid_refs)
             # The critic runs before revision, so it cannot assert its issue fixed.
             issue.resolution = None
+        # Review severity is advisory. Preserve the findings and revise unsafe
+        # claims, but represent every non-clean review as gaps rather than a gate.
+        if critic.review_status == "blocked":
+            critic.unresolved_gaps = _unique(critic.unresolved_gaps + [
+                "The review identified items that need validation; see the findings below."
+            ])
+        if critic.issues or critic.unresolved_gaps or critic.review_status != "ready":
+            critic.review_status = "ready_with_gaps"
+        else:
+            critic.review_status = "ready"
         return critic
 
     @staticmethod
@@ -476,9 +490,7 @@ class IntelligenceService:
                                     "this does not establish source accuracy or business applicability.")
         unresolved = [issue for issue in critic.issues if issue.resolution is None]
         critic.unresolved_gaps = _unique(critic.unresolved_gaps + final.gaps + [issue.reason for issue in unresolved])
-        if any(issue.severity == "high" for issue in unresolved):
-            critic.review_status = "blocked"
-        elif unresolved or critic.unresolved_gaps:
+        if unresolved or critic.unresolved_gaps:
             critic.review_status = "ready_with_gaps"
         else:
             critic.review_status = "ready"

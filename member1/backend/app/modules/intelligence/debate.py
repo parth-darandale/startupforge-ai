@@ -10,7 +10,19 @@ from .contracts import (AnalysisResult, Contract, DebateRequest, DebateSession,
                         DebateTurn, SourcedFigure, utc_now)
 from .errors import IntelligenceError
 from .interfaces import IntelligenceRepository, Progress
+from .prompts import build_messages
+from .providers import OLLAMA_CONTEXT_SAFETY_TOKENS
 from .settings import Settings
+
+
+HISTORY_BYTE_BUDGET = 24000
+RECENT_VERBATIM_TURNS = 4
+TURN_GENERATION_ATTEMPTS = 3
+HISTORY_NOTE = (
+    "Older arguments are supplied to the model as labelled exact opening excerpts with citation references; "
+    "the latest four turns stay complete. The saved transcript keeps every full argument. "
+    "Excerpts may omit counterarguments and are navigation aids, never independent evidence."
+)
 
 
 class TurnResponse(Contract):
@@ -38,6 +50,21 @@ def _model_figures(figures: list[SourcedFigure]) -> list[dict[str, Any]]:
     return [figure.model_dump(mode="json", exclude={"excerpt"}) for figure in figures]
 
 
+def _turn_schema(result: AnalysisResult) -> dict[str, Any]:
+    """Constrain generation to this analysis without weakening validation."""
+    schema = TurnResponse.model_json_schema()
+    for field, ids in (
+        ("evidence_ids", [item.evidence_id for item in result.context_draft.evidence]),
+        ("figure_ids", [item.figure_id for item in result.figures]),
+    ):
+        array = schema["properties"][field]
+        if ids:
+            array["items"] = {"type": "string", "enum": list(dict.fromkeys(ids))}
+        else:
+            array["maxItems"] = 0
+    return schema
+
+
 class DebateService:
     def __init__(self, settings: Settings, repository: IntelligenceRepository, llm: Any):
         self.settings = settings
@@ -48,33 +75,20 @@ class DebateService:
         result = self.repository.get_analysis(request.analysis_id)
         if result.project_id != request.project_id:
             raise IntelligenceError("ANALYSIS_PROJECT_MISMATCH", "The analysis belongs to another project.", 409)
-        if result.context_draft.critic.review_status == "blocked":
-            raise IntelligenceError("CONTEXT_BLOCKED", "Resolve the blocked evidence review before starting a debate.", 422)
         session = DebateSession(debate_id=f"d_{uuid.uuid4().hex}", project_id=request.project_id,
                                 analysis_id=request.analysis_id, mode=request.mode,
-                                user_stance=request.user_stance, max_rounds=request.max_rounds)
+                                user_stance=request.user_stance, max_rounds=request.max_rounds,
+                                model_id=(request.model_id or self.settings.llm_model or None)
+                                if self.settings.app_mode == "live" else None)
+        self._validate_session_model(session)
         self.repository.save_debate(session)
         return session
 
     async def prepare(self, session: DebateSession, progress: Progress) -> DebateSession:
+        self._validate_session_model(session)
         self.repository.claim_debate(session.debate_id)
         try:
-            if session.mode == "agent_vs_agent":
-                for round_number in range(1, session.max_rounds + 1):
-                    for stance in ("for", "against"):
-                        done = (round_number - 1) * 2 + (stance == "against")
-                        await progress(f"debating_round_{round_number}_{stance}", 10 + int(75 * done / (session.max_rounds * 2)))
-                        session.turns.append(await self._agent_turn(session, stance, round_number))
-                        self._save(session)
-                await progress("moderating", 93)
-                session.summary = await self._summary(session)
-                session.status = "completed"
-            else:
-                await progress("opening_argument", 50)
-                opposite = "against" if session.user_stance == "for" else "for"
-                session.turns.append(await self._agent_turn(session, opposite, 0))
-            self._save(session)
-            return session
+            return await self._continue(session, progress)
         except BaseException:
             session.status = "failed"
             self._save(session)
@@ -82,11 +96,80 @@ class DebateService:
         finally:
             self.repository.release_debate(session.debate_id)
 
+    async def resume(self, debate_id: str, progress: Progress) -> DebateSession:
+        # Claim before loading or changing state so a concurrent attempt cannot
+        # mark a running session as failed or replay its already validated turns.
+        self.repository.claim_debate(debate_id)
+        session = None
+        try:
+            current = self.repository.get_debate(debate_id)
+            self._validate_session_model(current)
+            if current.status != "failed":
+                raise IntelligenceError("DEBATE_NOT_INTERRUPTED", "Only an interrupted debate can be resumed.", 409)
+            self._validate_resume_prefix(current)
+            session = current.model_copy(deep=True)
+            session.status = "active"
+            self._save(session)
+            return await self._continue(session, progress)
+        except BaseException:
+            if session is not None:
+                session.status = "failed"
+                self._save(session)
+            raise
+        finally:
+            self.repository.release_debate(debate_id)
+
+    def _validate_session_model(self, session: DebateSession) -> None:
+        # A session's model is fixed when it is created. Legacy sessions without
+        # this field continue on the configured default, while a pinned session
+        # must never silently switch models during a reply or recovery.
+        if session.model_id and session.model_id != self.settings.llm_model:
+            raise IntelligenceError(
+                "DEBATE_MODEL_MISMATCH",
+                "This debate must continue with the model it was started with.",
+                409,
+                details={"model_id": session.model_id, "service_model_id": self.settings.llm_model},
+            )
+
+    @staticmethod
+    def _validate_resume_prefix(session: DebateSession) -> None:
+        if session.mode == "user_vs_agent":
+            if session.turns:
+                raise IntelligenceError("DEBATE_RESUME_UNAVAILABLE", "This user debate already has an opening. Retry its argument instead.", 409)
+            return
+        if len(session.turns) > session.max_rounds * 2:
+            raise IntelligenceError("DEBATE_TRANSCRIPT_INVALID", "The saved turn order cannot be resumed safely.", 409)
+        for index, turn in enumerate(session.turns):
+            stance = "for" if index % 2 == 0 else "against"
+            speaker = "pro" if stance == "for" else "skeptic"
+            if turn.round_number != index // 2 + 1 or turn.stance != stance or turn.speaker != speaker:
+                raise IntelligenceError("DEBATE_TRANSCRIPT_INVALID", "The saved turn order cannot be resumed safely.", 409)
+
+    async def _continue(self, session: DebateSession, progress: Progress) -> DebateSession:
+        if session.mode == "agent_vs_agent":
+            for index in range(len(session.turns), session.max_rounds * 2):
+                round_number = index // 2 + 1
+                stance = "for" if index % 2 == 0 else "against"
+                await progress(f"debating_round_{round_number}_{stance}", 10 + int(75 * index / (session.max_rounds * 2)))
+                session.turns.append(await self._agent_turn(session, stance, round_number))
+                self._save(session)
+            await progress("moderating", 93)
+            session.summary = await self._summary(session)
+            session.status = "completed"
+        else:
+            await progress("opening_argument", 50)
+            opposite = "against" if session.user_stance == "for" else "for"
+            session.turns.append(await self._agent_turn(session, opposite, 0))
+        self._save(session)
+        return session
+
     async def reply(self, debate_id: str, message: str, progress: Progress) -> DebateSession:
         self.repository.claim_debate(debate_id)
         original = None
         try:
-            original = self.repository.get_debate(debate_id)
+            current = self.repository.get_debate(debate_id)
+            self._validate_session_model(current)
+            original = current
             session = original.model_copy(deep=True)
             if session.mode != "user_vs_agent":
                 raise IntelligenceError("WATCH_ONLY_DEBATE", "Agent debates run automatically. Start a user debate to send arguments.", 409)
@@ -118,6 +201,75 @@ class DebateService:
         session.updated_at = utc_now()
         self.repository.save_debate(session)
 
+    def _model_payload(self, session: DebateSession, task: str, payload: dict[str, Any], schema: dict) -> dict[str, Any]:
+        """Bound long model history without changing the saved/public transcript.
+
+        Recent exchanges and source evidence are always verbatim. Older turns
+        keep their round, role, exact text prefix and all evidence/figure IDs in
+        a compact table. There is no generated or inferred summary in this step.
+        """
+        history = _model_history(session.turns)
+        full = {**payload, "history": history}
+        if len(history) <= RECENT_VERBATIM_TURNS:
+            return full
+
+        def prompt_bytes(value: dict) -> int:
+            return sum(len(message["content"].encode("utf-8"))
+                       for message in build_messages(task, value, schema))
+
+        base_bytes = prompt_bytes({**payload, "history": []})
+        prompt_budget = base_bytes + HISTORY_BYTE_BUDGET
+        if self.settings.llm_provider == "ollama":
+            available_tokens = (self.settings.ollama_num_ctx - self.settings.ollama_num_predict
+                                - OLLAMA_CONTEXT_SAFETY_TOKENS)
+            # Match the provider's conservative estimate and leave extra room
+            # for message framing. Never raise the configured model context.
+            local_budget = int(available_tokens * self.settings.ollama_context_bytes_per_token) - 512
+            prompt_budget = min(prompt_budget, local_budget)
+        if prompt_bytes(full) <= prompt_budget:
+            return full
+
+        earlier, recent = history[:-RECENT_VERBATIM_TURNS], history[-RECENT_VERBATIM_TURNS:]
+        evidence_ids = list(dict.fromkeys(ref for turn in earlier for ref in turn["evidence_ids"]))
+        figure_ids = list(dict.fromkeys(ref for turn in earlier for ref in turn["figure_ids"]))
+        evidence_indices = {ref: index for index, ref in enumerate(evidence_ids)}
+        figure_indices = {ref: index for index, ref in enumerate(figure_ids)}
+
+        def compact(excerpt_bytes: int) -> dict:
+            rows = []
+            for turn in earlier:
+                prefix = turn["message"].encode("utf-8")[:excerpt_bytes].decode("utf-8", errors="ignore")
+                rows.append([turn["round_number"], turn["speaker"], turn["stance"], prefix,
+                             prefix == turn["message"],
+                             [evidence_indices[ref] for ref in turn["evidence_ids"]],
+                             [figure_indices[ref] for ref in turn["figure_ids"]]])
+            return {**payload, "history": recent, "history_note": HISTORY_NOTE,
+                    "earlier_history": {
+                        "format": "exact_prefix_table", "turn_count": len(earlier),
+                        "columns": ["round_number", "speaker", "stance", "message_prefix", "message_complete",
+                                    "evidence_indices", "figure_indices"],
+                        "evidence_ids": evidence_ids, "figure_ids": figure_ids, "rows": rows}}
+
+        # At least a short exact prefix is retained for every older turn. If
+        # citations, sources and recent turns alone are too large, fail clearly
+        # instead of silently removing a turn or an evidence passage.
+        if prompt_bytes(compact(32)) > prompt_budget:
+            raise IntelligenceError(
+                "MODEL_CONTEXT_LIMIT",
+                "The source evidence and recent debate exchanges exceed this model's context budget even with labelled older excerpts. Use a supported larger context; the saved transcript remains intact.",
+                status_code=422, details={"task": task, "history_turns": len(history),
+                                         "recent_verbatim_turns": RECENT_VERBATIM_TURNS})
+        low, high = 32, 256
+        while low < high:
+            middle = (low + high + 1) // 2
+            if prompt_bytes(compact(middle)) <= prompt_budget:
+                low = middle
+            else:
+                high = middle - 1
+        session.history_compacted = True
+        session.history_note = HISTORY_NOTE
+        return compact(low)
+
     async def _agent_turn(self, session: DebateSession, stance: str, number: int) -> DebateTurn:
         result = self.repository.get_analysis(session.analysis_id)
         if self.settings.app_mode == "demo":
@@ -128,22 +280,56 @@ class DebateService:
                 raise IntelligenceError("PROVIDER_CONFIGURATION", "Configure a live language model before debating.", 503)
             payload = {"idea": result.context_draft.idea.model_dump(mode="json"), "stance": stance,
                        "round_number": number, "mode": session.mode,
-                       "history": _model_history(session.turns),
                        "evidence": [e.model_dump(mode="json") for e in result.context_draft.evidence],
                        "figures": _model_figures(result.figures),
                        "analysis": result.context_draft.final_analysis.model_dump(mode="json")}
-            try:
-                response = TurnResponse.model_validate(await self.llm.generate_json(
-                    "debate_turn", payload, TurnResponse.model_json_schema()))
-            except ValidationError:
-                raise IntelligenceError("DEBATE_INVALID_RESPONSE", "The debate agent returned an invalid argument.") from None
+            schema = _turn_schema(result)
+            feedback = None
+            for attempt in range(TURN_GENERATION_ATTEMPTS):
+                attempt_payload = dict(payload)
+                attempt_schema = schema
+                qualitative_correction = attempt == TURN_GENERATION_ATTEMPTS - 1 and feedback is not None
+                if feedback:
+                    attempt_payload["validation_feedback"] = feedback
+                    await asyncio.sleep(0)
+                if qualitative_correction:
+                    # Regenerate a qualitative argument rather than silently
+                    # removing an invalid statistic from the rejected response.
+                    attempt_schema = _turn_schema(result)
+                    attempt_schema["properties"]["figure_ids"] = {
+                        "type": "array", "items": {"type": "string"}, "maxItems": 0}
+                    attempt_payload["validation_feedback"] = {
+                        **feedback,
+                        "instruction": "Regenerate a qualitative argument with figure_ids as an empty array and no numerical claims. Copy only exact valid evidence IDs from the schema when relevant, or return evidence_ids as an empty array and explain the uncertainty. Do not claim a statistic supports this argument.",
+                    }
+                attempt_payload = self._model_payload(session, "debate_turn", attempt_payload, attempt_schema)
+                try:
+                    response = TurnResponse.model_validate(await self.llm.generate_json(
+                        "debate_turn", attempt_payload, attempt_schema))
+                    self._validate_turn_references(response, result)
+                    if qualitative_correction and response.figure_ids:
+                        raise IntelligenceError("DEBATE_INVALID_RESPONSE", "The qualitative correction must return an empty figure selection.")
+                    break
+                except (ValidationError, IntelligenceError) as exc:
+                    if isinstance(exc, IntelligenceError) and exc.code != "DEBATE_INVALID_RESPONSE":
+                        raise
+                    feedback = {
+                        "error": exc.message if isinstance(exc, IntelligenceError) else "The previous argument did not match TurnResponse.",
+                        "details": exc.details if isinstance(exc, IntelligenceError) else {},
+                        "instruction": "Regenerate the complete argument using only IDs in the output schema enums. Use empty arrays when no supplied evidence supports it. Figures must include their matching evidence ID. Do not invent, repair by guessing, or cite IDs in prose.",
+                    }
+                    if attempt == TURN_GENERATION_ATTEMPTS - 1:
+                        recovery = ("Resume the debate to retry" if session.mode == "agent_vs_agent"
+                                    or number == 0 else "Send your argument again to retry")
+                        raise IntelligenceError(
+                            "DEBATE_INVALID_RESPONSE", f"The agent could not produce a valid cited argument after correction attempts. {recovery}; validated arguments are preserved.",
+                            retryable=True, details={"attempts": TURN_GENERATION_ATTEMPTS,
+                                                     "round_number": number, "stance": stance,
+                                                     "last_validation": feedback}) from None
+        self._validate_turn_references(response, result)
         evidence_by_id = {item.evidence_id: item for item in result.context_draft.evidence}
         figure_by_id = {figure.figure_id: figure for figure in result.figures}
-        if any(ref not in evidence_by_id for ref in response.evidence_ids) or any(ref not in figure_by_id for ref in response.figure_ids):
-            raise IntelligenceError("DEBATE_INVALID_RESPONSE", "The debate agent cited evidence that does not exist.")
         valid_evidence = list(dict.fromkeys(ref for ref in response.evidence_ids if ref in evidence_by_id))
-        if any(figure_by_id[ref].evidence_id not in valid_evidence for ref in response.figure_ids):
-            raise IntelligenceError("DEBATE_INVALID_RESPONSE", "A debate figure is missing its evidence citation.")
         selected_figures = [figure for figure in result.figures
                             if figure.figure_id in response.figure_ids and figure.evidence_id in valid_evidence]
         message = self._guard_numbers(response.message)
@@ -152,6 +338,21 @@ class DebateService:
                           message=message, evidence_ids=valid_evidence,
                           source_ids=list(dict.fromkeys(evidence_by_id[eid].source_id for eid in valid_evidence)),
                           figures=selected_figures)
+
+    @staticmethod
+    def _validate_turn_references(response: TurnResponse, result: AnalysisResult) -> None:
+        evidence_ids = {item.evidence_id for item in result.context_draft.evidence}
+        figure_by_id = {figure.figure_id: figure for figure in result.figures}
+        if any(ref not in evidence_ids for ref in response.evidence_ids) or any(ref not in figure_by_id for ref in response.figure_ids):
+            raise IntelligenceError("DEBATE_INVALID_RESPONSE", "The argument cited an ID outside the supplied evidence or figures.",
+                                    details={"invalid_evidence_ids": [ref for ref in response.evidence_ids if ref not in evidence_ids],
+                                             "invalid_figure_ids": [ref for ref in response.figure_ids if ref not in figure_by_id]})
+        missing = {ref: figure_by_id[ref].evidence_id for ref in response.figure_ids
+                   if figure_by_id[ref].evidence_id not in response.evidence_ids}
+        if missing:
+            raise IntelligenceError("DEBATE_INVALID_RESPONSE", "A selected figure is missing its matching evidence citation.",
+                                    details={"selected_evidence_ids": response.evidence_ids,
+                                             "required_figure_evidence": missing})
 
     @staticmethod
     def _guard_numbers(message: str) -> str:
@@ -195,7 +396,9 @@ class DebateService:
                 "A pilot can help, but a small or self-selected sample cannot establish market size. We need dated sources, a defined geography, and an explanation of which customers the figures actually describe.",
                 "Even if users like the concept, delivery cost and existing alternatives may weaken it. Identify the assumptions that could make the project fail and test those first.",
             ]
-        message = reply + positions[min(max(number - 1, 0), 2)]
+        # Demo mode cycles its labelled teaching arguments throughout any
+        # requested length instead of repeating only the last one after round 3.
+        message = reply + positions[max(number - 1, 0) % len(positions)]
         if chosen:
             message += " The attached evidence passage explains the research exercise and its limitations."
         if figures:
@@ -210,12 +413,13 @@ class DebateService:
                     "Next: interview the intended users, run a small pilot, and collect dated market evidence with clear geography and methodology. "
                     "The figures and arguments shown in this demo are synthetic teaching material; they do not validate the startup.")
         payload = {"idea": result.context_draft.idea.model_dump(mode="json"),
-                   "history": _model_history(session.turns),
                    "evidence": [e.model_dump(mode="json") for e in result.context_draft.evidence],
                    "figures": _model_figures(result.figures)}
+        schema = SummaryResponse.model_json_schema()
+        payload = self._model_payload(session, "debate_summary", payload, schema)
         try:
             summary = SummaryResponse.model_validate(await self.llm.generate_json(
-                "debate_summary", payload, SummaryResponse.model_json_schema()))
+                "debate_summary", payload, schema))
         except ValidationError:
             raise IntelligenceError("DEBATE_INVALID_RESPONSE", "The moderator returned an invalid summary.") from None
         return self._guard_numbers(summary.summary)

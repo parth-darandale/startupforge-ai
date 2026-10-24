@@ -20,6 +20,11 @@ from .settings import Settings
 from .web_fetch import PublicPageFetcher
 
 
+_SEARCH_RESULT_HOSTS = {
+    "bing.com", "duckduckgo.com", "search.yahoo.com", "search.brave.com",
+}
+
+
 @dataclass
 class ResearchBatch:
     documents: list[ResearchDocument] = field(default_factory=list)
@@ -35,6 +40,11 @@ def _requested_url(value: Any) -> str | None:
     original = urlsplit(value)
     normalized = urlsplit(validated)
     return urlunsplit((normalized.scheme, normalized.netloc, original.path or "/", original.query, ""))
+
+
+def _is_search_result_url(url: str) -> bool:
+    host = (urlsplit(url).hostname or "").lower().rstrip(".")
+    return any(host == domain or host.endswith(f".{domain}") for domain in _SEARCH_RESULT_HOSTS)
 
 
 class WebResearchProvider:
@@ -144,7 +154,7 @@ class WebResearchProvider:
                         continue
                     url = _requested_url(row.get("href"))
                     title = row.get("title")
-                    if url and isinstance(title, str):
+                    if url and not _is_search_result_url(url) and isinstance(title, str):
                         candidates.setdefault(url, title[:500])
             if not candidates:
                 batch.gaps.append("No full source pages could be discovered. Supply report URLs or configure an accessible search engine; market statistics remain unknown.")

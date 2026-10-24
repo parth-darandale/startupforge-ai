@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.integration.contracts import (PitchDeckOptions, PosterOptions, ReportOptions)
 from app.integration.interfaces import IntegrationAdapters
-from app.modules.intelligence.contracts import ContextDraft, Job, JobReceipt, ProjectContext, ResearchOptions
+from app.modules.intelligence.contracts import ContextDraft, IdeaSpec, Job, JobReceipt, ProjectContext, ResearchOptions
 from app.modules.intelligence.errors import IntelligenceError
 from app.modules.intelligence.interfaces import JobOutcome, JobRunner
 from .projects import SQLiteStore
@@ -51,10 +51,11 @@ class PatchProjectRequest(RequestModel):
     expected_revision: int = Field(ge=1)
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
     draft_idea_text: str | None = Field(default=None, min_length=10, max_length=12000)
+    draft_idea: IdeaSpec | None = None
 
     @model_validator(mode="after")
     def has_changes(self):
-        if self.display_name is None and self.draft_idea_text is None:
+        if self.display_name is None and self.draft_idea_text is None and self.draft_idea is None:
             raise ValueError("Provide a project name or draft idea change")
         return self
 
@@ -137,9 +138,12 @@ def build_workspace_router(deps: WorkspaceDependencies) -> APIRouter:
         return deps.projects.get_job(job_id)
 
     @router.get("/projects/{project_id}/jobs")
-    async def project_jobs(project_id: str):
+    async def project_jobs(project_id: str, operation: str | None = Query(default=None, min_length=1, max_length=80),
+                           debate_id: str | None = Query(default=None, min_length=1, max_length=100)):
         deps.projects.get_project(project_id)
-        return {"jobs": deps.projects.list_jobs(project_id), "next_cursor": None}
+        if debate_id and operation != "debate_turn":
+            raise IntelligenceError("INVALID_JOB_FILTER", "A debate ID filter requires the debate_turn operation.", 422)
+        return {"jobs": deps.projects.list_jobs(project_id, operation, debate_id), "next_cursor": None}
 
     @router.patch("/projects/{project_id}")
     async def patch_project(project_id: str, body: PatchProjectRequest):
@@ -160,7 +164,7 @@ def build_workspace_router(deps: WorkspaceDependencies) -> APIRouter:
             raise IntelligenceError("INTELLIGENCE_NOT_AVAILABLE", "The idea intelligence module is not configured.", 503)
         prepared: dict[str, tuple[Any, dict[str, Any]]] = {}
         defaults = {
-            "pitch_deck": {"slide_count": 8, "tone": "professional"},
+            "pitch_deck": {"slide_count": 10, "tone": "professional"},
             "poster": {"audience": "Potential customers and reviewers"},
             "report": {"formats": ["docx"]},
         }
@@ -210,10 +214,6 @@ def build_workspace_router(deps: WorkspaceDependencies) -> APIRouter:
                     "project_id": context.project_id, "context_version": context.context_version,
                     "context_hash": context.content_hash,
                 })
-            if context.critic.review_status == "blocked":
-                raise IntelligenceError("CONTEXT_BLOCKED", "The analysis was saved, but its blocked review prevents output generation.", 422,
-                                        details={"context_version": context.context_version,
-                                                 "context_hash": context.content_hash})
             await parent_progress("starting_output_jobs", 62)
             child_ids: list[str] = []
 

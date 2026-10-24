@@ -64,7 +64,8 @@ class SQLiteStore:
         return [json.loads(row["payload"]) for row in rows]
 
     def update_project(self, project_id: str, expected_revision: int, changes: dict[str, Any]) -> dict[str, Any]:
-        allowed = {key: value for key, value in changes.items() if key in {"display_name", "draft_idea_text"}}
+        allowed = {key: value for key, value in changes.items()
+                   if key in {"display_name", "draft_idea_text", "draft_idea"}}
         if not allowed:
             raise IntelligenceError("EMPTY_PROJECT_UPDATE", "Provide a project name or draft idea change.", 422)
         with self.lock, self.connection() as connection:
@@ -92,7 +93,8 @@ class SQLiteStore:
         for row in rows:
             context = ProjectContext.model_validate_json(row["payload"])
             summaries.append({"context_version": row["version"], "content_hash": context.content_hash,
-                             "created_at": context.created_at, "review_status": context.critic.review_status,
+                             "created_at": context.created_at,
+                             "review_status": "ready" if context.critic.review_status == "ready" else "ready_with_gaps",
                              "project_name": context.idea.project_name})
         return summaries
 
@@ -163,10 +165,17 @@ class SQLiteStore:
             connection.execute("UPDATE jobs SET payload=? WHERE id=?", (updated.model_dump_json(), job_id))
         return updated
 
-    def list_jobs(self, project_id: str) -> list[Job]:
+    def list_jobs(self, project_id: str, operation: str | None = None, debate_id: str | None = None) -> list[Job]:
         with self.connection() as connection:
-            rows = connection.execute("SELECT payload FROM jobs ORDER BY rowid DESC").fetchall()
-        return [job for row in rows if (job := Job.model_validate_json(row["payload"])).project_id == project_id][:100]
+            if debate_id:
+                rows = connection.execute("SELECT payload FROM jobs WHERE scope=? ORDER BY rowid DESC",
+                                          (f"{project_id}:debate_turn:{debate_id}",)).fetchall()
+            else:
+                rows = connection.execute("SELECT payload FROM jobs ORDER BY rowid DESC").fetchall()
+        # Filter before applying the page bound so a long debate cannot hide
+        # the analysis or session-creation job needed to reopen that project.
+        return [job for row in rows if (job := Job.model_validate_json(row["payload"])).project_id == project_id
+                and (operation is None or job.operation == operation)][:100]
 
     def save_analysis(self, result: AnalysisResult) -> None:
         with self.lock, self.connection() as connection:
@@ -216,5 +225,15 @@ class SQLiteStore:
             if job.status in {"queued", "running"}:
                 self.update_job(job.job_id, status="failed", stage="interrupted", error=ErrorInfo(
                     code="JOB_INTERRUPTED", message="The server restarted before this job finished. Start a new attempt.", retryable=True))
+                if job.operation in {"create_debate", "resume_debate"} and job.result_url:
+                    debate_id = job.result_url.rsplit("/", 1)[-1]
+                    try:
+                        session = self.get_debate(debate_id)
+                    except IntelligenceError:
+                        continue
+                    if session.project_id == job.project_id and session.status == "active":
+                        session.status = "failed"
+                        session.updated_at = utc_now()
+                        self.save_debate(session)
         with self.connection() as connection:
             connection.execute("UPDATE debates SET busy=0")

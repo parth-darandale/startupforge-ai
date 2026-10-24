@@ -47,6 +47,23 @@ async def test_search_snippet_numbers_never_enter_evidence():
 
 
 @pytest.mark.asyncio
+async def test_search_engine_redirects_are_not_fetched_as_publication_sources():
+    async def discover(query, options):
+        return [
+            {"title": "Bing redirect", "href": "https://www.bing.com/ck/a?redirect=publisher"},
+            {"title": "Public report", "href": "https://example.org/report"},
+        ]
+
+    fetcher = RecordingFetcher()
+    result = await WebResearchProvider(Settings(), discovery=discover, fetcher=fetcher).search_with_diagnostics(
+        ["market"], ResearchOptions())
+
+    assert fetcher.calls == ["https://example.org/report"]
+    assert len(result.documents) == 1
+    assert not any("bing.com" in gap for gap in result.gaps)
+
+
+@pytest.mark.asyncio
 async def test_supplied_and_discovered_paths_keep_distinct_trailing_slashes():
     async def discover(query, options):
         return [{"title": "Report", "href": "https://example.org/report/", "body": "snippet"}]

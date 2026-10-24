@@ -4,16 +4,21 @@ import asyncio
 import copy
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 
 import pytest
 import pytest_asyncio
+from pydantic import ValidationError
 
 from app.harness.store import SQLiteStore
-from app.modules.intelligence.contracts import AnalysisResult, DebateRequest, ResearchOptions
-from app.modules.intelligence.debate import DebateService
+from app.modules.intelligence.contracts import AnalysisResult, DebateRequest, DebateSession, DebateTurn, ResearchOptions
+from app.modules.intelligence.debate import (DebateService, HISTORY_BYTE_BUDGET,
+    RECENT_VERBATIM_TURNS, SummaryResponse, TurnResponse)
 from app.modules.intelligence.errors import IntelligenceError
 from app.modules.intelligence.figures import extract_figures
 from app.modules.intelligence.pipeline import build_service
+from app.modules.intelligence.prompts import build_messages
+from app.modules.intelligence.providers import OLLAMA_CONTEXT_SAFETY_TOKENS
 from app.modules.intelligence.settings import Settings
 
 
@@ -356,3 +361,186 @@ async def test_model_debate_payload_deduplicates_metadata_and_preserves_full_con
             assert turn.figures == [figure]
             assert turn.figures[0].excerpt == figure.excerpt
             assert turn.source_ids == [figure.source_id]
+
+
+@pytest.mark.parametrize("mode", ["user_vs_agent", "agent_vs_agent"])
+@pytest.mark.parametrize("rounds", [1, 10, 25, 100])
+def test_request_and_persisted_session_accept_numeric_rounds(mode, rounds):
+    request = DebateRequest(project_id="p_rounds", analysis_id="a_rounds", mode=mode, max_rounds=rounds)
+    session = DebateSession(debate_id="d_rounds", **request.model_dump())
+    assert request.max_rounds == session.max_rounds == rounds
+    assert DebateSession.model_validate_json(session.model_dump_json()).max_rounds == rounds
+
+
+@pytest.mark.parametrize("bad_rounds", [0, -1, 101, 3.5, 10.0, "10", True, None])
+def test_request_and_session_reject_invalid_round_count_without_coercion(bad_rounds):
+    fields = {"project_id": "p_rounds", "analysis_id": "a_rounds", "mode": "agent_vs_agent",
+              "max_rounds": bad_rounds}
+    with pytest.raises(ValidationError):
+        DebateRequest(**fields)
+    with pytest.raises(ValidationError):
+        DebateSession(debate_id="d_rounds", user_stance="for", **fields)
+
+
+def test_debate_defaults_to_ten_rounds():
+    assert DebateRequest(project_id="p_rounds", analysis_id="a_rounds", mode="agent_vs_agent").max_rounds == 10
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("rounds", [10, 25, 100])
+async def test_long_automatic_debate_completes_every_requested_round_and_summary(prepared_analysis, rounds):
+    store, result, model, debate, session = live_debate(prepared_analysis, max_rounds=rounds, mode="agent_vs_agent")
+    figure = result.figures[0]
+    model.response["evidence_ids"] = [figure.evidence_id]
+    model.response["figure_ids"] = [figure.figure_id]
+    progress_updates = []
+
+    async def progress(stage, percent):
+        progress_updates.append((stage, percent))
+
+    completed = await debate.prepare(session, progress)
+    assert completed.status == "completed"
+    assert completed.max_rounds == rounds
+    assert len(completed.turns) == rounds * 2
+    assert [turn.round_number for turn in completed.turns] == [number for number in range(1, rounds + 1) for _ in range(2)]
+    assert [turn.speaker for turn in completed.turns] == ["pro", "skeptic"] * rounds
+    assert all(turn.figures == [figure] for turn in completed.turns)
+    assert [task for task, _ in model.calls] == ["debate_turn"] * (rounds * 2) + ["debate_summary"]
+    final_payload = model.calls[-1][1]
+    assert final_payload["history"][-1]["round_number"] == rounds
+    assert len(final_payload["history"]) + final_payload.get("earlier_history", {}).get("turn_count", 0) == rounds * 2
+    assert completed.summary == model.summary["summary"]
+    assert len(progress_updates) == rounds * 2 + 1
+    assert progress_updates[-2][0] == f"debating_round_{rounds}_against"
+    assert progress_updates[-1][0] == "moderating"
+    assert all(first[1] <= second[1] for first, second in zip(progress_updates, progress_updates[1:]))
+    assert store.get_debate(session.debate_id) == completed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("rounds", [10, 25])
+async def test_long_interactive_debate_waits_for_all_user_rounds_then_summarizes(prepared_analysis, rounds):
+    store, _, model, debate, session = live_debate(prepared_analysis, max_rounds=rounds)
+    opening = await debate.prepare(session, no_progress)
+    assert opening.status == "active"
+    assert opening.turns[0].round_number == 0
+    for number in range(1, rounds + 1):
+        updated = await debate.reply(session.debate_id, f"My pilot argument for round {number}.", no_progress)
+        assert len(updated.turns) == 1 + number * 2
+        assert updated.turns[-2].speaker == "user"
+        assert updated.turns[-2].message == f"My pilot argument for round {number}."
+        assert updated.turns[-1].round_number == number
+        if number < rounds:
+            assert updated.status == "active"
+            assert updated.summary is None
+            assert not any(task == "debate_summary" for task, _ in model.calls)
+    assert updated.status == "completed"
+    assert updated.summary == model.summary["summary"]
+    assert [task for task, _ in model.calls].count("debate_turn") == rounds + 1
+    assert [task for task, _ in model.calls].count("debate_summary") == 1
+    assert len(model.calls[-1][1]["history"]) == 1 + rounds * 2
+    assert store.get_debate(session.debate_id) == updated
+    with pytest.raises(IntelligenceError) as raised:
+        await debate.reply(session.debate_id, "An extra argument after the final round.", no_progress)
+    assert raised.value.code == "DEBATE_FINISHED"
+
+
+@pytest.mark.asyncio
+async def test_hundred_round_model_inputs_use_labelled_bounded_excerpts_without_altering_transcript(prepared_analysis):
+    store, result, model, debate, session = live_debate(prepared_analysis, max_rounds=100, mode="agent_vs_agent")
+    debate.settings = replace(debate.settings, llm_provider="ollama", ollama_num_ctx=16384)
+    figure = result.figures[0]
+    full_message = ("A focused pilot could test the customer problem while willingness to pay remains uncertain. " * 7).strip()
+    model.response = {"message": full_message, "evidence_ids": [figure.evidence_id], "figure_ids": [figure.figure_id]}
+    completed = await debate.prepare(session, no_progress)
+    assert completed.status == "completed"
+    assert len(completed.turns) == 200
+    assert completed.history_compacted is True
+    assert "saved transcript keeps every full argument" in completed.history_note
+    assert all(turn.message == full_message for turn in completed.turns)
+    assert all(turn.figures == [figure] for turn in completed.turns)
+    assert store.get_debate(session.debate_id) == completed
+
+    compacted_payloads = 0
+    for task, payload in model.calls:
+        assert payload["evidence"] == result.context_draft.model_dump(mode="json")["evidence"]
+        if "earlier_history" not in payload:
+            continue
+        compacted_payloads += 1
+        earlier = payload["earlier_history"]
+        assert earlier["format"] == "exact_prefix_table"
+        assert len(payload["history"]) == RECENT_VERBATIM_TURNS
+        assert "navigation aids, never independent evidence" in payload["history_note"]
+        rows = [dict(zip(earlier["columns"], row)) for row in earlier["rows"]]
+        assert len(rows) == earlier["turn_count"]
+        for compact_turn, original_turn in zip(rows, completed.turns):
+            assert compact_turn["round_number"] == original_turn.round_number
+            assert compact_turn["speaker"] == original_turn.speaker
+            assert compact_turn["stance"] == original_turn.stance
+            assert original_turn.message.startswith(compact_turn["message_prefix"])
+            assert compact_turn["message_prefix"]
+            assert compact_turn["message_complete"] == (compact_turn["message_prefix"] == original_turn.message)
+            assert [earlier["evidence_ids"][index] for index in compact_turn["evidence_indices"]] == original_turn.evidence_ids
+            assert [earlier["figure_ids"][index] for index in compact_turn["figure_indices"]] == [figure.figure_id]
+        for recent_turn, original_turn in zip(payload["history"], completed.turns[len(rows):]):
+            assert recent_turn["message"] == original_turn.message
+            assert recent_turn["evidence_ids"] == original_turn.evidence_ids
+        response_schema = (TurnResponse if task == "debate_turn" else SummaryResponse).model_json_schema()
+        prompt_size = sum(len(message["content"].encode("utf-8")) for message in build_messages(task, payload, response_schema))
+        remaining_tokens = (debate.settings.ollama_num_ctx - debate.settings.ollama_num_predict
+                            - OLLAMA_CONTEXT_SAFETY_TOKENS)
+        assert prompt_size <= remaining_tokens * debate.settings.ollama_context_bytes_per_token - 512
+        baseline = {key: value for key, value in payload.items() if key not in {"history", "history_note", "earlier_history"}}
+        baseline["history"] = []
+        baseline_size = sum(len(message["content"].encode("utf-8")) for message in build_messages(task, baseline, response_schema))
+        assert prompt_size - baseline_size <= HISTORY_BYTE_BUDGET
+    assert compacted_payloads > 1
+    summary_payload = model.calls[-1][1]
+    assert summary_payload["earlier_history"]["turn_count"] + len(summary_payload["history"]) == 200
+
+
+@pytest.mark.asyncio
+async def test_context_too_small_even_for_sources_and_recent_turns_fails_without_consuming_round(prepared_analysis):
+    store, _, model, debate, session = live_debate(prepared_analysis, max_rounds=25)
+    await debate.prepare(session, no_progress)
+    for _ in range(4):
+        await debate.reply(session.debate_id, "Test the pilot before scaling.", no_progress)
+    original = store.get_debate(session.debate_id).model_dump(mode="json")
+    debate.settings = replace(debate.settings, llm_provider="ollama", ollama_num_ctx=512, ollama_num_predict=256)
+    with pytest.raises(IntelligenceError) as raised:
+        await debate.reply(session.debate_id, "Keep all previous objections available.", no_progress)
+    assert raised.value.code == "MODEL_CONTEXT_LIMIT"
+    assert store.get_debate(session.debate_id).model_dump(mode="json") == original
+    assert [task for task, _ in model.calls].count("debate_turn") == 5
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("turn_count", [5, 6, 7, 8])
+async def test_long_early_history_compacts_when_needed_before_ninth_turn(prepared_analysis, turn_count):
+    store, result, model, debate, session = live_debate(prepared_analysis, max_rounds=25)
+    debate.settings = replace(debate.settings, llm_provider="ollama", ollama_num_ctx=16384)
+    figure = result.figures[0]
+    long_argument = ("The pilot proposal preserves this objection and its qualification for review. " * 80)[:5500]
+    session.turns = [DebateTurn(
+        turn_id=f"t_long_{index}", round_number=(index + 1) // 2,
+        speaker="user" if index % 2 else "skeptic", stance="for" if index % 2 else "against",
+        message=long_argument, evidence_ids=[figure.evidence_id],
+        source_ids=[figure.source_id], figures=[figure],
+    ) for index in range(turn_count)]
+    store.save_debate(session)
+    original_turns = [turn.model_dump(mode="json") for turn in session.turns]
+
+    await debate._agent_turn(session, "against", 5)
+    payload = model.calls[-1][1]
+    assert session.history_compacted is True
+    assert len(payload["history"]) == 4
+    assert payload["earlier_history"]["turn_count"] == turn_count - 4
+    assert all(turn["message"] == long_argument for turn in payload["history"])
+    assert payload["evidence"] == result.context_draft.model_dump(mode="json")["evidence"]
+    prompt_size = sum(len(message["content"].encode("utf-8"))
+                      for message in build_messages("debate_turn", payload, TurnResponse.model_json_schema()))
+    token_budget = (debate.settings.ollama_num_ctx - debate.settings.ollama_num_predict
+                    - OLLAMA_CONTEXT_SAFETY_TOKENS)
+    assert prompt_size <= token_budget * debate.settings.ollama_context_bytes_per_token - 512
+    assert [turn.model_dump(mode="json") for turn in session.turns] == original_turns
+    assert [turn.model_dump(mode="json") for turn in store.get_debate(session.debate_id).turns] == original_turns

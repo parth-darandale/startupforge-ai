@@ -149,7 +149,7 @@
       "type": "string"
     },
     "max_rounds": {
-      "maximum": 5,
+      "maximum": 100,
       "minimum": 1,
       "title": "Max Rounds",
       "type": "integer"
@@ -182,6 +182,35 @@
       ],
       "default": null,
       "title": "Summary"
+    },
+    "history_compacted": {
+      "default": false,
+      "title": "History Compacted",
+      "type": "boolean"
+    },
+    "history_note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "History Note"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
     },
     "created_at": {
       "format": "date-time",

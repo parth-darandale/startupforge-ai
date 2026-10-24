@@ -2,7 +2,7 @@
 
 The application runs as one FastAPI service and one React app at `http://127.0.0.1:8000`. Member 1 owns idea extraction, web research, reviewed analysis, debate and source figures. Member 2 owns pitch deck and poster generation. Member 3 owns report generation and shared project, job, artifact and file services.
 
-All modules read the same immutable `ProjectContext`. The caller must pass the complete saved context, not only its ID. The host validates the context hash and compares the supplied object with the exact stored version before accepting generation. A `blocked` review cannot be used to generate artifacts; `ready_with_gaps` is allowed and its gaps must remain visible in outputs.
+All modules read the same immutable `ProjectContext`. The caller must pass the complete saved context, not only its ID. The host validates the context hash and compares the supplied object with the exact stored version before accepting generation. Research review status never blocks debates, context saving, or output generation. Missing evidence and unresolved findings remain visible as gaps; unsupported facts stay labelled as assumptions or unknowns.
 
 ## Runtime flow
 
@@ -42,10 +42,12 @@ All paths use the `/api/v1` prefix. All generation and render POSTs require `Ide
 | GET | `/projects/{project_id}/contexts/{version}/handoff` | Returns that snapshot, its hash and output module availability. |
 | POST | `/projects/{project_id}/runs` | Extracts and reviews an idea, commits one version, then starts requested outputs concurrently. |
 | POST | `/intelligence/extractions` | Member 1: structures an idea in an async job. |
+| GET | `/intelligence/models` | Lists allowed model choices, the configured default and installed availability. |
 | POST | `/intelligence/analyses` | Member 1: researches, retrieves, critiques and revises an idea in an async job. |
 | GET | `/intelligence/analyses/{analysis_id}` | Reads an analysis draft, evidence, figures and review result. |
 | POST | `/intelligence/debates` | Member 1: starts a user-versus-agent or agent-versus-agent debate. |
 | GET | `/intelligence/debates/{debate_id}` | Reads the debate transcript and moderator summary. |
+| POST | `/intelligence/debates/{debate_id}/resume` | Resumes a failed debate at its first missing validated turn, preserving the transcript and round count. Requires `Idempotency-Key`. |
 | POST | `/intelligence/debates/{debate_id}/turns` | Adds a user turn to an interactive debate. |
 | GET | `/integration/modules` | Reports installed output modules and their public routes. |
 | GET | `/studio/templates?kind=pitch_deck` | Member 2: lists pitch deck templates, formats and option bounds. |
@@ -55,7 +57,7 @@ All paths use the `/api/v1` prefix. All generation and render POSTs require `Ide
 | GET | `/reports/templates` | Member 3: lists report templates and DOCX/PDF support. |
 | POST | `/reports/generations` | Member 3: produces editable formal report content and requested exports. |
 | GET | `/jobs/{job_id}` | Reads progress, result, context pin and structured error. |
-| GET | `/projects/{project_id}/jobs` | Lists the project's recent jobs. |
+| GET | `/projects/{project_id}/jobs` | Lists the latest 100 matching jobs. Optional `operation` filter, plus `debate_id` for `debate_turn`, keeps long debate restoration independent of other job history. |
 | GET | `/projects/{project_id}/artifacts` | Lists output manifests, optionally filtered by context version or kind. |
 | GET | `/artifacts/{artifact_id}` | Reads artifact metadata and available files. |
 | GET | `/artifacts/{artifact_id}/content?revision={n}` | Reads a selected immutable content revision. |
